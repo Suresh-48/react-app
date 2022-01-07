@@ -1,0 +1,251 @@
+$form-select-padding-y: 10px;
+
+.collapsing {
+  position: absolute !important;
+  z-index: 3;
+}
+
+.collapse-show-text-width {
+  display: block;
+  position: absolute;
+  background-color: white;
+  z-index: 3;
+  right: 10px;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.collapse-content-style {
+  display: grid;
+}
+
+.navigate-edit-text-link {
+  color: black;
+  text-decoration: none;
+  display: flex;
+  padding-left: 40px;
+  padding-right: 40px;
+  margin: 12px 0px;
+}
+
+.navigate-create-link {
+  color: black;
+  text-decoration: none;
+  padding: 10px 0px;
+  display: flex;
+  font-weight: bolder;
+}
+
+hr {
+  margin: 0;
+}
+
+.card-detail {
+  display: flex;
+}
+
+.card-body-width {
+  margin: 10px 0px 0px 0px;
+  align-self: center;
+  // word-wrap:break-word;
+}
+
+.para {
+  word-wrap: break-word;
+}
+
+.card-height-style {
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  height: 390px !important;
+  margin-bottom: 2rem;
+}
+
+.image-content {
+  position: relative;
+  text-align: center;
+}
+
+.top-right {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+}
+
+.pagination-width {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+.icon-style {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.star-height {
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  align-self: center;
+}
+
+.form-check-input {
+  width: 1.2em;
+  height: 1.2em;
+  background-color: #fff;
+  background-repeat: no-repeat;
+  background-position: center;
+  // background-size: contain;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-print-color-adjust: exact;
+  color-adjust: exact;
+}
+
+.form-check-label {
+  font-size: larger;
+  align-items: center;
+  margin-left: 1.5em;
+  margin-top: 0.5em;
+  align-self: center;
+  display: flex;
+}
+
+.form-check {
+  display: block;
+  // min-height: 1.5rem;
+  // padding-left: 1.5em;
+  // margin-bottom: .125rem;
+  // margin-top: 1.3em;
+}
+
+.card-footer-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  @media (max-width: 992px) {
+    font-size: 14px;
+     justify-content: center;
+  }
+}
+
+.create-course-button {
+  display: flex;
+  justify-content: space-between;
+}
+
+.course-title {
+  margin-bottom: 0;
+  font-weight: 450;
+}
+
+.create-button-style {
+  padding: 0px 15px 0px 10px;
+  margin-bottom: 1.5rem;
+}
+
+.footer-price-style {
+  margin: left 14px;
+  display: flex;
+  justify-content: center;
+   @media (max-width: 992px) {
+    font-size: 14px;
+    justify-content: center;
+  }
+}
+
+.footer-enroll-style {
+  margin: auto;
+  display: flex;
+  justify-content: end;
+   @media (max-width: 992px) {
+      font-size: 14px;
+     justify-content: center;
+  }
+}
+
+.image-heigh {
+  height: 200px;
+  @media (max-width: 768px) {
+    height: 150px;
+  }
+  @media (max-width: 992px) {
+    height: 170px;
+  }
+}
+
+.collapse-text-pading {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+.tab-count {
+  border-radius: 50px;
+  width: 35px;
+  background-color: rgba(199, 199, 199, 0.836);
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.tab-count-style {
+  display: flex;
+  justify-content: center;
+}
+
+.tab-width {
+  @media (min-width: 1024) {
+    width: 40%;
+  }
+  width: 33.33%;
+}
+
+.tab-title {
+  margin-bottom: 0px;
+}
+
+.amount-text {
+  margin-right: 10px;
+  text-decoration-line: line-through;
+  margin-bottom: 0px;
+}
+
+.enroll-text {
+  margin-right: 3px;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 0px;
+}
+
+.course-name {
+  font-size: 16px;
+}
+
+.no-record-position-style {
+  display: flex;
+  justify-content: center;
+  font-weight: bold;
+  font-size: larger;
+  margin-top: 2rem;
+}
+
+.page-item.active .page-link {
+  z-index: 0;
+}
+
+$font-size: 16px;
+$line-height: 1.5;
+$lines-to-show: 3;
+
+.ellipsis-text {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  font-size: $font-size !important;
+  line-height: $line-height !important;
+  -webkit-line-clamp: $lines-to-show !important;
+  -webkit-box-orient: vertical;
+}
