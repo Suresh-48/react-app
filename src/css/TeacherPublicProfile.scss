@@ -1,0 +1,66 @@
+.user-name {
+  justify-content: center;
+  display: flex;
+  margin-top: 15px;
+  font-size: larger;
+  font-weight: 600;
+  // margin-bottom: 0px !important;
+}
+.label-style {
+  font-weight: bold;
+  margin-bottom: 0px !important;
+}
+.detail-style {
+  // font-weight:bold;
+  margin-left: 5px !important;
+}
+
+.aboutUs-label-style {
+  font-size: larger;
+  font-weight: bold;
+  margin-bottom: 14px !important;
+  margin-top: 40px;
+}
+
+.left-content{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+  .profile-image-size{
+  height: 200px !important;
+  width: 100% !important;
+  border-radius: 15% !important;
+  cursor: pointer !important;
+  object-fit: cover !important;
+}
+@media (max-width: 768px) {
+  .profile-image-size {
+   height: 125px !important;
+    width: 100% !important;
+  object-fit: cover !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .profile-image-size {
+   width: 70% !important;
+    height: 180px!important;
+  object-fit: cover !important;
+  }
+}
+
+.teacher-profile-header {
+  height: 50px !important;
+  // background-color: #f8f9fa !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+@media (max-width: 576px) {
+  .teacher-profile-header {
+    height: 110px !important;
+  }
+}

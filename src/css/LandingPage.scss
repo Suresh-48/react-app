@@ -1,0 +1,259 @@
+$gray: #808080;
+$white: #fff;
+$cardText: #111;
+.session-top {
+  margin-top: 5%;
+  margin-bottom: 5%;
+}
+
+.image-height-style {
+  height: 200px;
+  @media (max-width: 768px) {
+    height: 150px;
+  }
+  @media (max-width: 992px) {
+    height: 170px;
+  }
+}
+
+.landing-card-height {
+  height: 428px !important;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+  @media (max-width: 768px) {
+    height: 428px !important;
+  }
+}
+.row-center {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+  align-items: center;
+}
+
+.card-title {
+  font-size: 16px !important;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: baseline;
+  margin-left: 10px;
+}
+
+.card-div {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+}
+.card-price {
+  color: $cardText;
+  font-size: 18px;
+}
+
+.card-text {
+  color: $gray;
+  padding-left: 10px;
+  padding-right: 10px;
+  text-align: justify;
+}
+.card-footer {
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: row;
+}
+
+.cart-button {
+  width: 80%;
+  align-self: center;
+}
+
+.card-body-price {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 0px;
+  margin-right: 10px;
+
+}
+.card-footer-content-style {
+  display: flex;
+  justify-content: center !important;
+  width: 100%;
+}
+.price-style {
+  text-decoration-line: line-through;
+  text-decoration-style: solid;
+  padding-right: 10px;
+}
+
+.card-footer-button {
+  display: flex;
+  justify-content: center;
+}
+
+.footer-content {
+  width: 100%;
+  height: 130px; /* Set the fixed height of the footer here */
+  background-color: #f5f5f5;
+  overflow: hidden;
+  position: relative;
+  margin-top: 30px;
+  bottom: 0;
+  left: 0;
+}
+
+.list-content-title {
+  list-style-type: none;
+  text-decoration: none;
+  justify-content: left;
+  align-items: left;
+}
+.no-underline {
+  text-decoration: none;
+  font-weight: 600;
+}
+.footer-title {
+  font-weight: bold;
+}
+
+.edit-link {
+  text-decoration: none;
+  cursor: pointer;
+  padding: 5px 0px;
+  display: flex;
+  justify-content: center;
+}
+
+.viewall-button {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0px 0px 10px 0px;
+}
+
+.viewall-button-style {
+  width: auto;
+}
+
+.no-data-intemation {
+  display: grid;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+.body-price {
+  display: flex;
+  justify-content: flex-start;
+  @media (max-width: 992px) {
+    font-size: 14px;
+    justify-content: center;
+  }
+}
+.body-enrolled {
+  display: flex;
+  justify-content: flex-end;
+  @media (max-width: 992px) {
+    font-size: 14px;
+    justify-content: center;
+  }
+}
+
+.enroll-text {
+  margin-right: 3px;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 0px;
+}
+
+.amount-text {
+  margin-right: 10px;
+  text-decoration-line: line-through;
+  margin-bottom: 0px;
+}
+.enrolled-padding {
+  padding: 0px !important;
+}
+
+$font-size: 16px;
+$line-height: 1.5;
+$lines-to-show: 3;
+
+.ellipsis-text {
+  height: 70px;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  font-size: $font-size !important;
+  line-height: $line-height !important;
+  -webkit-line-clamp: $lines-to-show !important;
+  -webkit-box-orient: vertical;
+}
+.truncate-text{
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  font-size: $font-size !important;
+  line-height: $line-height !important;
+  -webkit-line-clamp: 1 !important;
+  -webkit-box-orient: vertical;
+}
+
+a.youtube {
+  color: #eb3223;
+}
+
+a.facebook {
+  color: #4968ad;
+}
+
+a.twitter {
+  color: #49a1eb;
+}
+
+a.instagram {
+  color: black;
+}
+.about-title {
+  background-color: #daeef0;
+  display: flex;
+  justify-content: center;
+  font-size: xx-large;
+  font-weight: bold;
+}
+.vision_img {
+  display: flex;
+  flex-direction: row;
+}
+.txt_view {
+  text-align: justify;
+  line-height: 1.9;
+  padding:0px 25px;
+}
+.image_view {
+  width: 100%;
+  height: 100%;
+}
+.image-height {
+  height: 80%;
+  width: 80%;
+}
+.heading{
+  font-family: serif;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+}
+.image_views{
+  background-color: brown;
+}
+.txt_top{
+  width:90%;
+  text-align: center !important;
+  line-height: 1.9;
+}
+// .card-body-alignments{
+//   padding: 0rem 1rem;
+// }
