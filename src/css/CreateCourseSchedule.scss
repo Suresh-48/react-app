@@ -1,0 +1,54 @@
+.start-time-style {
+  width: 100%;
+  border: 1px solid #dadfe3 !important;
+  background-color: hsl(0, 0%, 100%);
+  border-radius: 4px;
+  height: 40px;
+  cursor: default;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0px 7px 10px !important;
+}
+
+.save-changes {
+  width: 25% !important;
+  background: var(--primaryColor) !important;
+  color: white !important;
+  border-radius: 5;
+  @media (max-width: 768px) {
+    width: 35% !important;
+  }
+  @media (max-width: 576px) {
+    width: 50% !important;
+    font-size: 12px !important;
+  }
+}
+
+
+.create-button-styles {
+  background: var(--primaryColor) !important;
+  color: white !important;
+  width: 25% !important;
+  border-radius: 5;
+  @media (max-width: 768px) {
+    width: 35% !important;
+  }
+  @media (max-width: 576px) {
+    width: 50% !important;
+    font-size: 12px !important;
+  }
+}
+
+.Toastify__toast-body > div:last-child {
+  color: black;
+}
+.dropdown-option{
+  margin-top:1px !important;
+  text-decoration: none;
+  color: gray;
+  font-size: 16px;
+  font-weight: bold;
+}
+.dropdown-names{
+margin-left:15px;
+}
