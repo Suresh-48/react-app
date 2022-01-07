@@ -4,6 +4,8 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+// heroku config:set NODE_OPTIONS="--max_old_space_size=2560" -a
+
 ReactDOM.render(
   <React.StrictMode>
     <App />
