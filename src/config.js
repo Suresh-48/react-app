@@ -12,7 +12,7 @@ export const ENV = NODE_ENV;
 
 export const DEFAULT_API_KEY = REACT_APP_DEFAULT_API_KEY;
 
-export const API_URL = REACT_APP_API_URL;
+export const API_URL = "https://27ff-59-97-32-104.ngrok.io";
 
 export const HEADER = REACT_API_HEADER;
 
