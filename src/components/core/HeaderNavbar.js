@@ -26,9 +26,13 @@ import { ROLES_PARENT, ROLES_STUDENT, ROLES_ADMIN, ROLES_TEACHER } from "../../c
 
 // Api
 import Api from "../../Api";
+import { NavDropdown } from "react-bootstrap";
+import { toast } from "react-toastify";
 
-const HeaderNavbar = (props) => {
+const HeaderNavbar = ({ props, sidebar, open }) => {
+  const Open = open;
   const [isOpen, setIsOpen] = useState(false);
+  const sideBarvalue = sidebar;
   const [role, setrole] = useState("");
   const [userId, setuserId] = useState("");
   const [userDetails, setuserDetails] = useState("");
@@ -38,25 +42,30 @@ const HeaderNavbar = (props) => {
   const [studentId, setstudentId] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [image, setImage] = useState("");
-
+  const [status, setstatus] = useState("");
+  const [checkPassword, setCheckPassword] = useState(false);
   const history = useHistory();
   const pathName = history.location.pathname;
   const isParent = role === ROLES_PARENT;
   const isStudent = role === ROLES_STUDENT;
   const isAdmin = role === ROLES_ADMIN;
   const isTeacher = role === ROLES_TEACHER;
+  const token = localStorage.getItem("sessionId");
 
   const toggle = () => setIsOpen(!isOpen);
 
   useEffect(() => {
     getUserDetails();
-  }, []);
+  }, [sideBarvalue]);
 
   // Log out
   const logout = () => {
     setshow(!show);
-    localStorage.clear(history.push("/login"));
-    getUserDetails();
+    setTimeout(() => {
+      localStorage.clear(history.push("/kharpi"));
+      window.location.reload();
+      getUserDetails();
+    }, 2000);
   };
 
   //get details
@@ -71,12 +80,15 @@ const HeaderNavbar = (props) => {
     setTeacherId(teacherId);
     Api.get(`api/v1/user/${userId}`).then((response) => {
       const userDetails = response.data.data.getOne;
+      const teacherStatus = response.data.data.teacherStatus.status;
+      setstatus(teacherStatus);
       setuserDetails(userDetails);
       setfirstName(userDetails.firstName);
       setlastName(userDetails.lastName);
       const parentId = userDetails.parentId;
       const studentId = userDetails.studentId;
       const teacherId = userDetails.teacherId;
+      setCheckPassword(userDetails.password || userDetails.password !== undefined ? true : false);
       Api.get(
         `api/v1/${(parentId && studentId) || studentId ? "student" : parentId ? "parent" : "teacher"}/${
           (parentId && studentId) || studentId ? studentId : parentId ? parentId : teacherId
@@ -87,131 +99,54 @@ const HeaderNavbar = (props) => {
       });
     });
   };
-
   return (
     <>
       <Navbar color="light" light expand="md" className="navbar-style">
-        <Container>
-          <NavbarBrand href="/landing-page">
-            <img src={Kharpi} width="100" height="30" className="d-inline-block align-top" alt="logo" />
-          </NavbarBrand>
+        <Container fluid>
+          {Open ? (
+            <NavbarBrand
+              className="navbarbrand-alignment"
+              onClick={() => history.push("/kharpi", { sideClose: "closed" })}
+            >
+              <img src={Kharpi} width="100" height="30" className="d-inline-block align-top" alt="logo" />
+            </NavbarBrand>
+          ) : null}
 
           <NavbarToggler onClick={toggle} />
-          {isParent === true || isStudent === true ? (
-            <Collapse isOpen={isOpen} navbar>
-              {isStudent ? (
-                <Nav className="mr-auto" navbar>
-                  <NavItem>
-                    <NavLink href="/dashboard">Dashboard</NavLink>
-                  </NavItem>
-                  <NavItem>
-                    <NavLink href="/upcoming/schedule">Upcoming Schedule</NavLink>
-                  </NavItem>
-                  <NavItem>
-                    <NavLink href="/test/link">Quiz</NavLink>
-                  </NavItem>
-                  <NavItem>
-                    <NavLink href="/homework/link">Home Work</NavLink>
-                  </NavItem>
-                  <NavItem>
-                    <NavLink href={`/student/transcript/${studentId}`}>Marks</NavLink>
-                  </NavItem>
-                  <NavLink href="/course/history">Course History</NavLink>
-                </Nav>
-              ) : (
-                isParent && (
-                  <Nav className="mr-auto" navbar>
-                    <NavItem>
-                      <NavLink href="/dashboard">Dashboard</NavLink>
-                    </NavItem>
-                    <NavItem>
-                      <NavLink href="/upcoming/schedule">Upcoming Schedules</NavLink>
-                    </NavItem>
-                    <NavItem>
-                      <NavLink href="/course/history">Course History</NavLink>
-                    </NavItem>
-                  </Nav>
-                )
-              )}
-            </Collapse>
-          ) : isAdmin ? (
-            <Collapse isOpen={isOpen} navbar>
-              <Nav className="mr-auto" navbar>
-                <NavItem>
-                  <NavLink href="/dashboard">Dashboard</NavLink>
-                </NavItem>
-                <NavItem>
-                  <NavLink href="/course/list">Courses</NavLink>
-                </NavItem>
-                <NavItem>
-                  <NavLink href="/course/category">Course Category</NavLink>
-                </NavItem>
-                <NavItem>
-                  <NavLink href="/upcoming/teacher/schedule/list">Upcoming Course Schedeule</NavLink>
-                </NavItem>
-                <NavItem>
-                  <NavLink href="/payment/list">Payment List</NavLink>
-                </NavItem>
-              </Nav>
-            </Collapse>
-          ) : isTeacher ? (
-            <Collapse isOpen={isOpen} navbar>
-              <Nav className="mr-auto" navbar>
-                <NavItem>
-                  <NavLink href="/dashboard">Dashboard</NavLink>
-                </NavItem>
-                <NavItem>
-                  <NavLink href="/upcoming/teacher/schedule/list">Upcoming Schedeule List</NavLink>
-                </NavItem>
-                <NavItem>
-                  <NavLink href="/teacher/review/quiz">Quiz</NavLink>
-                </NavItem>
-                <NavItem>
-                  <NavLink href="/teacher/review/homework">Homework</NavLink>
-                </NavItem>
-                <NavItem>
-                  <NavLink href="/teacher/application/form">Teacher Application</NavLink>
-                </NavItem>
-                <NavItem>
-                  <NavLink href="/not-available/time">Not Available</NavLink>
-                </NavItem>
-              </Nav>
-            </Collapse>
-          ) : (
+          {!isParent && !isStudent && !isTeacher && !isAdmin && (
             <Collapse isOpen={isOpen} navbar style={{ justifyContent: "flex-end" }}>
               <Nav className="mr-auto" navbar>
+                {pathName !== "/kharpi" && (
+                  <NavItem className="ml-auto">
+                    <NavLink href="/kharpi">Home Page</NavLink>
+                  </NavItem>
+                )}
                 <NavItem className="">
                   <NavLink href="/about-us">About Us</NavLink>
                 </NavItem>
                 <NavItem className="">
                   <NavLink href="/help">Help</NavLink>
                 </NavItem>
-                {pathName !== "/login" && (
-                  <NavItem className="ml-auto">
-                    <NavLink href="/login">Login</NavLink>
-                  </NavItem>
-                )}
-                {pathName !== "/teacher/signup" && (
-                  <NavItem className="ml-auto">
-                    <NavLink href="/teacher/signup">Teacher Signup</NavLink>
-                  </NavItem>
-                )}
+                <NavItem className="ml-auto">
+                  <NavLink href="/login">Login</NavLink>
+                </NavItem>
               </Nav>
             </Collapse>
           )}
-          {isParent || isStudent || isAdmin || isTeacher ? (
+          {isParent || isStudent || isTeacher ? (
             <Collapse isOpen={isOpen} navbar style={{ justifyContent: "flex-end" }}>
               <Nav className="mr-auto" navbar>
                 <UncontrolledDropdown nav inNavbar>
-                  <DropdownToggle nav>
+                  <DropdownToggle nav style={{ marginRight: 20 }}>
                     {image ? (
                       <Avatar
                         src={image}
-                        size="45"
+                        size="40"
                         onClick={() => setshow(!show)}
                         round={true}
                         color="silver"
                         className="avatar-style"
+                        style={{ width: "92%" }}
                       />
                     ) : (
                       <Avatar
@@ -224,7 +159,7 @@ const HeaderNavbar = (props) => {
                       />
                     )}
                   </DropdownToggle>
-                  <DropdownMenu right className="dropdown-content">
+                  <DropdownMenu right className="dropdown-content me-3">
                     <DropdownItem className="avatar-list">
                       <Link
                         to={{
@@ -258,7 +193,22 @@ const HeaderNavbar = (props) => {
                 </UncontrolledDropdown>
               </Nav>
             </Collapse>
-          ) : null}
+          ) : (
+            isAdmin && (
+              <Collapse isOpen={isOpen} navbar style={{ justifyContent: "flex-end" }}>
+                <Nav className="mr-auto" navbar>
+                  <Link
+                    to="#"
+                    className="navigate-profile-link"
+                    onClick={logout}
+                    style={{ cursor: "pointer", zIndex: 0 }}
+                  >
+                    Logout
+                  </Link>
+                </Nav>
+              </Collapse>
+            )
+          )}
         </Container>
       </Navbar>
     </>

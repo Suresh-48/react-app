@@ -4,10 +4,16 @@ import { Col, Container, Row, Form, Button, FormControl, InputGroup } from "reac
 import { useHistory } from "react-router-dom";
 import { Formik, ErrorMessage } from "formik";
 import * as Yup from "yup";
-import { faUserFriends, faCalendarDay } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-toastify";
 import Select from "react-select";
 import moment from "moment";
+import { MuiPickersUtilsProvider, KeyboardDatePicker } from "@material-ui/pickers";
+import DateFnsUtils from "@date-io/date-fns";
+import { GoogleLogin } from "react-google-login";
+import FacebookLogin from "react-facebook-login";
+
+// Roles
+import { ROLES_PARENT } from "../../constants/roles";
 
 //Styles
 import "../../css/StudentRegistration.scss";
@@ -17,10 +23,9 @@ import Label from "../../components/core/Label";
 
 // Icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
-
-import { MuiPickersUtilsProvider, KeyboardDatePicker } from "@material-ui/pickers";
-import DateFnsUtils from "@date-io/date-fns";
+import { faCalendarDay } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faEyeSlash, faRedoAlt } from "@fortawesome/free-solid-svg-icons";
+import { customStyles } from "../core/Selector";
 
 const options = [
   { value: "Male", label: "Male" },
@@ -28,13 +33,102 @@ const options = [
 ];
 
 const StudentRegistration = (props) => {
-  const [parentId, setparentId] = useState("");
+  const [parentId, setparentId] = useState(null);
   const [courseId, setcourseId] = useState(props?.props?.location?.state?.courseId);
   const [isSubmit, setisSubmit] = useState(false);
   const [passwordShown, setPasswordShown] = useState(false);
   const [confirmPasswordShown, setConfirmPasswordShown] = useState(false);
   const [gender, setgender] = useState("");
   const [dob, setdob] = useState("");
+  const [role, setrole] = useState("");
+  const [aliasName, setaliasName] = useState(props?.props?.location?.state?.aliasName);
+
+  const isParent = role === ROLES_PARENT;
+
+  const CLIENT_ID = "901411976146-5r87ft9nah8tqdp3stg7uod39i1h66ft.apps.googleusercontent.com";
+
+  // Success Handler
+  const responseGoogleSuccess = (response) => {
+    Api.post("api/v1/student/signup", {
+      tokenId: response.tokenId,
+      googleId: response.googleId,
+      isGoogleLogin: true,
+      parentId: parentId,
+    })
+      .then((res) => {
+        if (parentId) {
+          history.goBack();
+        } else if (!res.data.dataVerified) {
+          const role = res.data.studentLogin.role;
+          const userId = res.data.studentLogin.id;
+          const studentId = res.data.studentLogin.studentId;
+          const token = res.data.studentLogin.token;
+          localStorage.setItem("role", role);
+          localStorage.setItem("userId", userId);
+          localStorage.setItem("studentId", studentId);
+          localStorage.setItem("sessionId", token);
+          history.push({
+            pathname: `/edit/student/details/${studentId}`,
+            state: { courseId: courseId, aliasName: aliasName },
+          });
+          window.location.reload();
+        }
+      })
+      .catch((error) => {
+        if (error.response && error.response.status >= 400) {
+          let errorMessage;
+          const errorRequest = error.response.request;
+          if (errorRequest && errorRequest.response) {
+            errorMessage = JSON.parse(errorRequest.response).message;
+          }
+          toast.error(error.response.data.message);
+        }
+      });
+  };
+
+  //FaceBook
+  const responseFacebook = (response) => {
+    Api.post("api/v1/student/signup", {
+      faceBookId: response.id,
+      isFaceBookLogin: true,
+      firstName: response.first_name,
+      lastName: response.last_name,
+      email: response.email,
+    })
+      .then((res) => {
+        if (parentId) {
+          history.goBack();
+        } else if (!res.data.dataVerified) {
+          const role = res.data.studentLogin.role;
+          const userId = res.data.studentLogin.id;
+          const studentId = res.data.studentLogin.studentId;
+          const token = res.data.studentLogin.token;
+          localStorage.setItem("role", role);
+          localStorage.setItem("userId", userId);
+          localStorage.setItem("studentId", studentId);
+          localStorage.setItem("sessionId", token);
+          history.push({
+            pathname: `/edit/student/details/${studentId}`,
+            state: { courseId: courseId, aliasName: aliasName },
+          });
+          window.location.reload();
+        }
+      })
+      .catch((error) => {
+        if (error.response && error.response.status >= 400) {
+          let errorMessage;
+          const errorRequest = error.response.request;
+          if (errorRequest && errorRequest.response) {
+            errorMessage = JSON.parse(errorRequest.response).message;
+          }
+          toast.error(error.response.data.message);
+        }
+      });
+  };
+
+  // Error Handler
+  const responseGoogleError = (response) => {};
+  const [captcha, setCaptcha] = useState("");
 
   // Date Format
   const setDateFormat = (e) => {
@@ -45,10 +139,10 @@ const StudentRegistration = (props) => {
     let year = getAge.getUTCFullYear();
     let age = Math.abs(year - 1970);
 
-    if (age <= 17) {
+    if (age >= 5 && age <= 18) {
       setdob(dateValue);
     } else {
-      toast.warning("Your Age Must Be Under 17");
+      toast.warning("Your Age Must Be at least 5 years to at most 18 years");
       setdob(null);
     }
   };
@@ -61,20 +155,34 @@ const StudentRegistration = (props) => {
     setConfirmPasswordShown(confirmPasswordShown ? false : true);
   };
 
+  const getRandomCaptcha = () => {
+    let randomChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "";
+    for (let i = 0; i < 6; i++) {
+      result += randomChars.charAt(Math.floor(Math.random() * randomChars.length));
+    }
+    setCaptcha(result);
+  };
+
   const history = useHistory();
 
   useEffect(() => {
+    getRandomCaptcha();
     let parentId = localStorage.getItem("parentId");
+    const role = localStorage.getItem("role");
+    setrole(role);
     setparentId(parentId);
   }, []);
 
   //Submit Form
   const submitForm = (values) => {
+    const user_captcha = values.captcha;
     const email = values.email.toLowerCase();
     const startDate = dob;
     const dateValue = moment(startDate).format("ll");
     setisSubmit(true);
-    if (values.password === values.confirmPassword) {
+    if (values.password === values.confirmPassword && captcha === user_captcha) {
+      getRandomCaptcha();
       Api.post("api/v1/student/signup", {
         firstName: values.firstName,
         lastName: values.lastName,
@@ -90,11 +198,8 @@ const StudentRegistration = (props) => {
           const status = response.status;
           if (status === 201) {
             if (parentId) {
-              if (courseId) {
-                history.goBack();
-              } else {
-                history.push("/dashboard");
-              }
+              history.push({ pathname: "/dashboard", state: { sidebar: true } });
+              // window.location.reload();
             } else {
               const role = response.data.studentLogin.role;
               const userId = response.data.studentLogin.id;
@@ -104,11 +209,9 @@ const StudentRegistration = (props) => {
               localStorage.setItem("userId", userId);
               localStorage.setItem("studentId", studentId);
               localStorage.setItem("sessionId", token);
-              if (courseId) {
-                history.goBack();
-              } else {
-                history.push("/dashboard");
-              }
+
+              history.push({ pathname: "/dashboard", state: { sidebar: true } });
+              // window.location.reload();
             }
           } else {
             toast.error(response.data.message);
@@ -123,10 +226,16 @@ const StudentRegistration = (props) => {
               errorMessage = JSON.parse(errorRequest.response).message;
             }
             toast.error(error.response.data.message);
+            values.captcha = "";
             setisSubmit(false);
           }
           setisSubmit(false);
         });
+    } else {
+      setisSubmit(false);
+      toast.error("Captcha Does Not Match");
+      values.captcha = "";
+      getRandomCaptcha();
     }
   };
 
@@ -140,7 +249,9 @@ const StudentRegistration = (props) => {
       .matches(/^[aA-zZ\s]+$/, "Enter Valid Name")
       .matches(/^[A-Z]/, "First Letter Must Be In Capital")
       .required("Last Name Is Required"),
-    email: Yup.string().email("Enter Valid Email").required("Email Is Required"),
+    email: Yup.string()
+      .email("Enter Valid Email")
+      .required("Email Is Required"),
 
     dob: Yup.string().required("Date Of Birth Is Required"),
 
@@ -149,7 +260,7 @@ const StudentRegistration = (props) => {
     password: Yup.string()
       .matches(
         "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&])",
-        "Password Should Be Mix Of Letters, Numbers, Special Character (!@#$%^&)"
+        "Password Should contain Uppercase, Lowercase, Numbers and Special Characters"
       )
       .min(8, "Password Required Minimum 8 characters")
       .required("Password Is Required"),
@@ -157,19 +268,57 @@ const StudentRegistration = (props) => {
       .oneOf([Yup.ref("password"), null], "Passwords must match")
       .matches(
         "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&])",
-        "Password Should Be Mix Of Letters, Numbers, Special Character (!@#$%^&)"
+        "Confirm Password Should contain Uppercase, Lowercase, Numbers and Special Characters"
       )
       .required("Confirm Password Is Required"),
+    captcha: Yup.string()
+      .min(6, "Captcha required minimum 6 characters ")
+      .max(6, "Captcha maximum 6 characters")
+      .required("Captcha is Required"),
   });
 
   return (
-    <Container>
+    <Container className="mb-5">
       <MuiPickersUtilsProvider utils={DateFnsUtils}>
-        <Row className="mt-5">
-          <Col lg={6} md={6} sm={12} className="p-5 m-auto shadow -sm rounded-lg">
-            <div className="d-flex justify-content-center align-items-center mb-4 ">
+        <Row className="mt-4">
+          <Col
+            lg={6}
+            md={6}
+            sm={12}
+            className="pb-5 ps-5 pe-5 pt-4 m-auto shadow -sm rounded-lg teacer-sign-background"
+          >
+            {/* <div className="d-flex justify-content-center align-items-center mb-4 ">
               <FontAwesomeIcon icon={faUserFriends} size="3x" color="#1d1464" />
-            </div>
+            </div> */}
+            <h4 className="d-flex justify-content-center mb-2" style={{ fontFamily: "none", fontWeight: "bold" }}>
+              Student Sign Up
+            </h4>
+            {role !== "parent" && (
+              <div>
+                <div className="google-login d-flex justify-content-center pt-2">
+                  <GoogleLogin
+                    clientId={CLIENT_ID}
+                    buttonText="Sign Up with Google"
+                    onSuccess={responseGoogleSuccess}
+                    onFailure={responseGoogleError}
+                    isSignedIn={false}
+                    cookiePolicy={"single_host_origin"}
+                  />
+                </div>
+                <div className="pt-3">
+                  <FacebookLogin
+                    appId="766552864322859"
+                    autoLoad={true}
+                    textButton="Sign Up with Facebook"
+                    fields="first_name,last_name,email,picture"
+                    scope="public_profile,email,user_friends"
+                    callback={responseFacebook}
+                    icon="fa-facebook"
+                  />
+                </div>
+                <hr className="or-divider my-4" />
+              </div>
+            )}
             <Formik
               initialValues={{
                 firstName: "",
@@ -179,6 +328,7 @@ const StudentRegistration = (props) => {
                 dob: "",
                 gender: "",
                 confirmPassword: "",
+                captcha: "",
               }}
               validationSchema={loginSchema}
               onSubmit={(values) => submitForm(values)}
@@ -189,7 +339,6 @@ const StudentRegistration = (props) => {
                   <div>
                     <Form onSubmit={handleSubmit}>
                       <Row>
-                        <h3 className="d-flex justify-content-center mb-4">Student Registration</h3>
                         <Col md="12">
                           <Form.Group className="form-row mb-3" style={{ marginRight: 20, width: "100%" }}>
                             <Label notify={true}>First Name</Label>
@@ -248,7 +397,7 @@ const StudentRegistration = (props) => {
                                 variant="standard"
                                 className="start-time-style"
                                 style={{ paddingLeft: 10 }}
-                                placeholder="Select Start Date"
+                                placeholder="Select Date of Birth"
                                 helperText={""}
                                 InputProps={{
                                   disableUnderline: true,
@@ -273,6 +422,7 @@ const StudentRegistration = (props) => {
                               <Select
                                 id="gender"
                                 name="gender"
+                                styles={customStyles}
                                 value={values.gender}
                                 placeholder="Select Gender"
                                 onChange={(e) => {
@@ -310,6 +460,7 @@ const StudentRegistration = (props) => {
                               <InputGroup.Text>
                                 <FontAwesomeIcon
                                   icon={passwordShown ? faEye : faEyeSlash}
+                                  style={{ cursor: "pointer" }}
                                   onClick={togglePasswordVisibility}
                                   size="1x"
                                 />
@@ -343,6 +494,7 @@ const StudentRegistration = (props) => {
                               <InputGroup.Text>
                                 <FontAwesomeIcon
                                   icon={confirmPasswordShown ? faEye : faEyeSlash}
+                                  style={{ cursor: "pointer" }}
                                   onClick={tooglePasswordVisibility}
                                   size="1x"
                                 />
@@ -351,6 +503,56 @@ const StudentRegistration = (props) => {
                             <ErrorMessage name="confirmPassword" component="span" className="error text-danger" />
                           </Form.Group>
                         </Col>
+                        <Row>
+                          <Col md="7" className="mb-3">
+                            <Form.Group className="form-row" style={{ marginRight: 20, width: "100%" }}>
+                              <Label notify={true}>Captcha</Label>
+
+                              <Form.Control
+                                type="text"
+                                id="captcha"
+                                name="captcha"
+                                value={values.captcha}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                className="form-width captcha-field"
+                                placeholder="Captcha"
+                                onPaste={(e) => {
+                                  e.preventDefault();
+                                  return false;
+                                }}
+                              />
+                              <ErrorMessage name="captcha" component="span" className="error text-danger" />
+                            </Form.Group>
+                          </Col>
+                          <Col className="d-flex justify-content-center align-items-center mt-3">
+                            <Form.Group className="form-row" style={{ width: "100%" }}>
+                              <Form.Label className="captcha-form">
+                                <s
+                                  className="border border-primary px-2 captcha-alignment"
+                                  style={{ backgroundColor: "azure" }}
+                                  onCopy={(e) => {
+                                    e.preventDefault();
+                                    return false;
+                                  }}
+                                >
+                                  {captcha}
+                                </s>
+                                <FontAwesomeIcon
+                                  icon={faRedoAlt}
+                                  size="1x"
+                                  color="#1d1464"
+                                  className="captcha-text mx-3 mt-1"
+                                  onClick={() => {
+                                    values.captcha = "";
+                                    getRandomCaptcha();
+                                  }}
+                                />
+                              </Form.Label>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+
                         <div className="d-flex justify-content-center mt-3">
                           <Button
                             className={`${!isValid || isSubmit ? "create-account-disable" : "create-account-active"}`}
@@ -359,7 +561,7 @@ const StudentRegistration = (props) => {
                             color="primary"
                             disabled={!isValid || isSubmit}
                           >
-                            Create Account
+                            Sign Up as Student
                           </Button>
                         </div>
                       </Row>

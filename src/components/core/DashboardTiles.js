@@ -1,37 +1,44 @@
-import React from 'react'
+import React from "react";
 
-import { Col, Card } from 'react-bootstrap'
+import { Col, Card } from "react-bootstrap";
 
-import CountUp from 'react-countup'
+import CountUp from "react-countup";
 
-import { Link } from 'react-router-dom'
+import { Link } from "react-router-dom";
 
 // Style
-import '../../css/DashBoard.scss'
+import "../../css/DashBoard.scss";
 
 function DashboardTiles({ label, count, url }) {
   return (
     <>
-      <Col xs={12} sm={12} md={4} lg={4}>
-        <Card className="card-style mt-3">
-          <div className="student-count-style">
-            <h4 className="know">{label}</h4>
-            <h2 className="mb-0">
-              {url ? (
-                <Link to={url} className="text-decoration">
-                  <CountUp end={count} duration={1} />
-                </Link>
-              ) : (
+      <Col xs={12} sm={12} md={4} lg={4} className="mt-3">
+        {url ? (
+          <Card className="card-style-dashboard mt-3">
+            <Link to={url} className="text-decoration">
+              <div className="student-count-style">
+                <h5 className="">{label}</h5>
+                <h4 className="mb-0">
+                  <CountUp end={count} duration={1} className="dashboard-card-color" />
+                </h4>
+              </div>
+            </Link>
+          </Card>
+        ) : (
+          <Card className="card-style-dashboard mt-3">
+            <div className="student-count-style">
+              <h5 className="">{label}</h5>
+              <h4 className="mb-0 ">
                 <div>
-                  <CountUp end={count} duration={1} />
+                  <CountUp end={count} duration={1} className="dashboard-card-color" />
                 </div>
-              )}
-            </h2>
-          </div>
-        </Card>
+              </h4>
+            </div>
+          </Card>
+        )}
       </Col>
     </>
-  )
+  );
 }
 
-export default DashboardTiles
+export default DashboardTiles;

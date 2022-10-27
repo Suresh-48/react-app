@@ -7,7 +7,7 @@ function AboutUs() {
     <div>
       <Container>
         <div>
-          <h1 className="heading">Preparing Kids For Life After School...!</h1>
+          <h1 className="heading mt-2">Preparing Kids For Life After School...!</h1>
         </div>
         <div className="d-flex justify-content-center pt-4">
           <p  className="txt_top">
@@ -23,7 +23,7 @@ function AboutUs() {
         <Row className="m-0">
           <Col className="d-flex justify-content-center" xs={12} sm={6}>
             <img
-              className="image_view"
+              className="image_view_1"
               src="https://images.squarespace-cdn.com/content/v1/583ed05c59cc68a8c3e45c0f/1482074282081-KQBCRLEWPLWTJKWBCR4X/vision.png?format=750w"
               alt="Snow"
             />
@@ -65,7 +65,7 @@ function AboutUs() {
           </Col>
           <Col className="d-flex justify-content-center" xs={12}  sm={6}>
             <img
-              className="image_view"
+              className="image_view_1 mb-5"
               src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR38xBLKoM7n78xMUuL51iKMmpd-Bu3nBzWdyzsaYmm1-U8h7atjRmYerABn5Y4wNgo07Y&usqp=CAU"
               alt="Snow"
             />

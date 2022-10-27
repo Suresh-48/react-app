@@ -26,7 +26,9 @@ $form-select-padding-y: 10px;
   padding-right: 40px;
   margin: 12px 0px;
 }
-
+.navigate-edit-text-link:hover {
+  color: #375474;
+}
 .navigate-create-link {
   color: black;
   text-decoration: none;
@@ -55,7 +57,6 @@ hr {
 
 .card-height-style {
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-  height: 390px !important;
   margin-bottom: 2rem;
 }
 
@@ -94,7 +95,6 @@ hr {
   background-color: #fff;
   background-repeat: no-repeat;
   background-position: center;
-  // background-size: contain;
   border: 1px solid rgba(0, 0, 0, 0.5);
   -webkit-appearance: none;
   appearance: none;
@@ -113,19 +113,16 @@ hr {
 
 .form-check {
   display: block;
-  // min-height: 1.5rem;
-  // padding-left: 1.5em;
-  // margin-bottom: .125rem;
-  // margin-top: 1.3em;
+  padding-left: 0em;
 }
 
 .card-footer-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   width: 100%;
   @media (max-width: 992px) {
     font-size: 14px;
-     justify-content: center;
+    justify-content: center;
   }
 }
 
@@ -137,6 +134,9 @@ hr {
 .course-title {
   margin-bottom: 0;
   font-weight: 450;
+  @media only screen and (min-width: 280px) and (max-width: 740px) {
+    margin: 3% 0 0 1% !important;
+  }
 }
 
 .create-button-style {
@@ -148,7 +148,8 @@ hr {
   margin: left 14px;
   display: flex;
   justify-content: center;
-   @media (max-width: 992px) {
+  align-items: center;
+  @media (max-width: 992px) {
     font-size: 14px;
     justify-content: center;
   }
@@ -158,9 +159,9 @@ hr {
   margin: auto;
   display: flex;
   justify-content: end;
-   @media (max-width: 992px) {
-      font-size: 14px;
-     justify-content: center;
+  @media (max-width: 992px) {
+    font-size: 14px;
+    justify-content: center;
   }
 }
 
@@ -180,12 +181,12 @@ hr {
 }
 
 .tab-count {
-  border-radius: 50px;
-  width: 35px;
+  border-radius: 40px;
+  width: 26px;
   background-color: rgba(199, 199, 199, 0.836);
   display: flex;
   justify-content: center;
-  margin-bottom: 0px;
+  // margin-bottom: 0px;
   font-size: 14px;
   font-weight: bold;
 }
@@ -207,7 +208,6 @@ hr {
 }
 
 .amount-text {
-  margin-right: 10px;
   text-decoration-line: line-through;
   margin-bottom: 0px;
 }
@@ -220,6 +220,7 @@ hr {
 }
 
 .course-name {
+  width: 60%;
   font-size: 16px;
 }
 
@@ -248,4 +249,20 @@ $lines-to-show: 3;
   line-height: $line-height !important;
   -webkit-line-clamp: $lines-to-show !important;
   -webkit-box-orient: vertical;
+}
+
+.course-checkou-modal-color {
+  background-color: #375474;
+  color: white;
+  text-align: center;
+}
+
+.font-awesome-point {
+  cursor: pointer;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+.border-bottom-color {
+  background-color: #375474;
+  color: #fff;
+  margin-left: -1px !important;
 }

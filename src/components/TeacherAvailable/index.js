@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, Children } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Modal, Row, Form, Col, Overlay, Tooltip, FormControl } from "react-bootstrap";
 import { Calendar, momentLocalizer } from "react-big-calendar";
@@ -18,6 +18,8 @@ import Api from "../../Api";
 
 // Styles
 import "../../css/Calendar.scss";
+import { useHistory } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const localizer = momentLocalizer(moment);
 
@@ -37,12 +39,28 @@ function TeacherAvailable(props) {
   const [show, setshow] = useState(false);
   const [isSubmit, setisSubmit] = useState(false);
   const [isLoading, setisLoading] = useState(true);
+  const history = useHistory();
+  const token = localStorage.getItem("sessionId");
 
   // Onchange value
   function handleSelect({ start, end }) {
-    setNewEvent({ start, end });
-    setOpen(true);
+    const currentDate = Date.now();
+    const newDate = moment(currentDate).format();
+    const selectedDate = moment(start).format();
+    const checkDate = newDate > selectedDate;
+    if (!checkDate) {
+      setNewEvent({ start, end });
+      setOpen(true);
+    }
   }
+
+  //logout
+  const logout = () => {
+     setTimeout(() => {
+       localStorage.clear(history.push("/kharpi"));
+       window.location.reload();
+     }, 2000);
+  };
 
   // Close Modal Popup
   function handleClose() {
@@ -54,10 +72,10 @@ function TeacherAvailable(props) {
     const [showTooltip, setShowTooltip] = useState(false);
 
     const closeTooltip = () => {
-      setShowTooltip(!showTooltip);
+      setShowTooltip(false);
     };
     const openTooltip = () => {
-      setShowTooltip(!showTooltip);
+      setShowTooltip(true);
     };
     const ref = useRef(null);
 
@@ -75,7 +93,7 @@ function TeacherAvailable(props) {
         <Overlay rootClose target={getTarget} show={showTooltip} placement="top">
           <Tooltip id="test">
             <span>
-              <div>{eventData.title}</div>
+              <div>{event.title}</div>
             </span>
           </Tooltip>
         </Overlay>
@@ -89,16 +107,25 @@ function TeacherAvailable(props) {
     Api.get(`api/v1/teacherAvailability/list`, {
       params: {
         teacherId: teacherId,
+        token: token,
       },
-    }).then((response) => {
-      const scheduleValue = response.data.data.availabilityList;
-      setschedule(scheduleValue);
-      for (let i = 0; i < scheduleValue.length; i++) {
-        scheduleValue[i].start = moment.utc(scheduleValue[i].start).toDate();
-        scheduleValue[i].end = moment.utc(scheduleValue[i].end).toDate();
-      }
-      setisLoading(false);
-    });
+    })
+      .then((response) => {
+        const scheduleValue = response.data.data.availabilityList;
+        setschedule(scheduleValue);
+        for (let i = 0; i < scheduleValue.length; i++) {
+          scheduleValue[i].start = moment.utc(scheduleValue[i].start).toDate();
+          scheduleValue[i].end = moment.utc(scheduleValue[i].end).toDate();
+        }
+        setisLoading(false);
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
 
   useEffect(() => {
@@ -117,6 +144,20 @@ function TeacherAvailable(props) {
     setshow(false);
   }
 
+  function eventStyleGetter(event, start, end, isSelected) {
+    var style = {
+      backgroundColor: event.status === "CourseSchedule" ? "#74be9c" : "#eaa2a2",
+      borderRadius: "6px",
+      color: "black",
+      fontSize: 14,
+      border: "0px",
+      display: "block",
+    };
+    return {
+      style: style,
+    };
+  }
+
   // Submit form
   function submitForm() {
     setshow(false);
@@ -132,11 +173,21 @@ function TeacherAvailable(props) {
       start: newEvent.start,
       end: newEvent.end,
       title: title,
-    }).then((response) => {
-      setOpen(false);
-      setisSubmit(false);
-      getAvailabilityList();
-    });
+      status: "Availability",
+      token: token,
+    })
+      .then((response) => {
+        setOpen(false);
+        setisSubmit(false);
+        getAvailabilityList();
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
+      });
   }
 
   return (
@@ -147,13 +198,17 @@ function TeacherAvailable(props) {
         <div className="pt-1">
           <Calendar
             tooltipAccessor={null}
+            views={["month", "day", "agenda"]}
             components={{ event: Event }}
             selectable={true}
             localizer={localizer}
             events={schedule}
             startAccessor="start"
             endAccessor="end"
-            onSelectSlot={(event) => handleSelect(event)}
+            onSelectSlot={(event) => {
+              handleSelect(event);
+            }}
+            eventPropGetter={(event) => eventStyleGetter(event)}
             style={{ height: 500, margin: "50px" }}
           />
           <Modal show={Open} backdrop="static" centered>
@@ -201,7 +256,9 @@ function TeacherAvailable(props) {
                                 </Form.Label>
                                 <DatePicker
                                   className="picker-input"
-                                  showTimeSelect
+                                  minDate={moment().toDate()}
+                                  showTimeInput
+                                  timeInputLabel="Time:"
                                   dateFormat="dd-MM-yyyy hh:mm a"
                                   placeholderText="Start Date"
                                   selected={newEvent.start}
@@ -218,7 +275,8 @@ function TeacherAvailable(props) {
                                   End Date
                                 </Form.Label>
                                 <DatePicker
-                                  showTimeSelect
+                                  showTimeInput
+                                  timeInputLabel="Time:"
                                   dateFormat="dd-MM-yyyy hh:mm a"
                                   placeholderText="End Date"
                                   className="picker-input"
@@ -232,7 +290,7 @@ function TeacherAvailable(props) {
                             </Col>
                             <div className="d-flex justify-content-end mt-2">
                               <Button
-                                className="cancel-button"
+                                className="Kharpi-cancel-btn"
                                 variant="contained"
                                 color="#fff"
                                 style={{ width: "100%", borderRadius: 5 }}
@@ -262,13 +320,13 @@ function TeacherAvailable(props) {
             <Modal.Body id="contained-modal-title-vcenter">
               <div className="delete-content my-4">
                 <div className="mb-2">
-                  <h6 className="alert-text">Are You Sure want to add Not Available Time,</h6>
+                  <h6 className="alert-text">Are you sure want to add Not Available time,</h6>
                   <br />
                   <p className="d-flex justify-content-center">This can't be Changed Or Delete in Future</p>
                 </div>
                 <Row>
                   <Col>
-                    <Button className="delete-cancel" variant="light" onClick={() => closeShow()}>
+                    <Button className="delete-cancel" onClick={() => closeShow()}>
                       Cancel
                     </Button>
                   </Col>

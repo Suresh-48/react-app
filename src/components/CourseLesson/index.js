@@ -27,6 +27,7 @@ function CourseLesson(props) {
   const [courseDetail, setCourseDetail] = useState([]);
   const [courseId, setcourseId] = useState(props.location.state.courseId);
   const [isLoading, setIsLoading] = useState(true);
+  const token = localStorage.getItem("sessionId");
 
   const history = useHistory();
 
@@ -42,16 +43,25 @@ function CourseLesson(props) {
       field: "lessonName",
     },
     {
+      title: "Actual Amount",
+      render: (rowData) =>
+        rowData.lessonActualAmount ? <p className="amount-text"> {rowData.lessonActualAmount}</p> : "-",
+    },
+    {
+      title: "Discount Amount",
+      render: (rowData) => (rowData.lessonDiscountAmount ? <p>{rowData.lessonDiscountAmount}</p> : "-"),
+    },
+    {
       title: "Description",
       render: (rowData) => (
-        <div className="ellipsis-text" dangerouslySetInnerHTML={convertFromJSONToHTML(`${rowData.description}`)}></div>
+        <div
+          className="descriptions-text-align"
+          dangerouslySetInnerHTML={convertFromJSONToHTML(`${rowData.description}`)}
+        ></div>
       ),
-      // cellStyle: {
-      //   textOverflow: 'ellipsis',
-      //   whiteSpace: 'nowrap',
-      //   overflow: 'hidden',
-      //   maxWidth: 350,
-      // },
+      cellStyle: {
+        maxWidth: 420,
+      },
     },
     {
       title: "Duration",
@@ -64,21 +74,38 @@ function CourseLesson(props) {
     Api.get("api/v1/courseLesson/lessonlist", {
       params: {
         courseId: courseId,
+        token: token,
       },
-    }).then((response) => {
-      const data = response.data.lessonList;
-      data.sort((a, b) => (a.lessonNumber > b.lessonNumber ? 1 : -1));
-      setData(data);
-      setIsLoading(false);
-    });
+    })
+      .then((response) => {
+        const data = response.data.lessonList;
+        data.sort((a, b) => (a.lessonNumber > b.lessonNumber ? 1 : -1));
+        setData(data);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+            this.logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
 
   // Get Course Detail
   const getCourseDetail = () => {
-    Api.get(`api/v1/course/${courseId}`).then((response) => {
-      const courseDetail = response.data.data;
-      setCourseDetail(courseDetail);
-    });
+    Api.get(`api/v1/course/${courseId}`, { headers: { token: token } })
+      .then((response) => {
+        const courseDetail = response.data.data;
+        setCourseDetail(courseDetail);
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+            this.logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
 
   const convertFromJSONToHTML = (value) => {
@@ -94,9 +121,17 @@ function CourseLesson(props) {
     getCourseDetail();
   }, []);
 
+  // Log out
+  const logout = () => {
+     setTimeout(() => {
+       localStorage.clear(history.push("/kharpi"));
+       window.location.reload();
+     }, 2000);
+  };
+
   // Delete Lesson
   const deleteLesson = (data, reload) => {
-    Api.delete("api/v1/courseLesson/" + data.id)
+    Api.delete("api/v1/courseLesson/" + data.id, { headers: { token: token } })
       .then((response) => {
         courseLessonData();
         reload();
@@ -112,9 +147,15 @@ function CourseLesson(props) {
           reload();
           toast.error(error.response.data.message);
         }
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+            this.logout();
+          toast.error("Session Timeout");
+        }
       });
   };
 
+ 
   // Style
   const tableTheme = createTheme({
     overrides: {
@@ -133,68 +174,71 @@ function CourseLesson(props) {
   });
 
   return (
-    <Container>
+    <Container className="mt-1">
       <CourseSideMenu courseId={courseId} />
-      <div className=" row mt-3 main">
+      <div className="row edit-course-lesson-style">
         <ThemeProvider theme={tableTheme}>
           {isLoading ? (
             <Loader />
           ) : (
-            <div>
-              <div className="d-flex justify-content-center align-items-center py-3">
-                <h4>Lesson List</h4>
+            <div className="mb-3">
+              <div className="mt-2 py-3">
+                <h4>Lessons</h4>
               </div>
-              <MaterialTable
-                style={{ width: "100%" }}
-                icons={tableIcons}
-                title={data?.length === 0 ? "" : data[0]?.courseId?.name}
-                data={data}
-                columns={columns}
-                actions={[
-                  {
-                    icon: () => <AddBox style={{ color: "#397AD4" }} />,
-                    tooltip: "Add Lesson",
-                    isFreeAction: true,
-                    onClick: (event, rowData) => {
-                      history.push({
-                        pathname: "/course/lesson/add",
-                        state: {
-                          courseId: courseId,
-                          courseName: courseDetail?.name,
-                        },
-                      });
+              <div className="material-table-responsive">
+                <MaterialTable
+                  style={{ width: "100%" }}
+                  icons={tableIcons}
+                  title={data?.length === 0 ? "" : data[0]?.courseId?.name}
+                  data={data}
+                  columns={columns}
+                  actions={[
+                    {
+                      icon: () => <AddBox style={{ color: "#1d1464" }} />,
+                      tooltip: "Add Lesson",
+                      isFreeAction: true,
+                      onClick: (event, rowData) => {
+                        history.push({
+                          pathname: "/course/lesson/add",
+                          state: {
+                            courseId: courseId,
+                            courseName: courseDetail?.name,
+                          },
+                        });
+                      },
                     },
-                  },
-                  {
-                    icon: () => <Edit style={{ color: "#1458E0" }} />,
-                    tooltip: "Edit Lesson",
-                    onClick: (event, rowData) => {
-                      history.push(`/course/lesson/edit/${rowData.id}`, rowData);
+                    {
+                      icon: () => <Edit style={{ color: "#1458E0" }} />,
+                      tooltip: "Edit Lesson",
+                      onClick: (event, rowData) => {
+                        history.push(`/course/lesson/edit/${rowData.id}`, rowData);
+                      },
                     },
-                  },
-                ]}
-                localization={{
-                  body: {
-                    emptyDataSourceMessage: "No Lessons Are Created",
-                  },
-                }}
-                editable={{
-                  onRowDelete: (selectedRow) =>
-                    new Promise((resolve, reject) => {
-                      deleteLesson(selectedRow, resolve);
-                    }),
-                  saveTooltip: "Delete",
-                }}
-                options={{
-                  actionsColumnIndex: -1,
-                  addRowPosition: "last",
-                  headerStyle: {
-                    backgroundColor: "#cce6ff",
-                    fontWeight: "bold",
-                    zIndex: 0,
-                  },
-                }}
-              />
+                  ]}
+                  localization={{
+                    body: {
+                      emptyDataSourceMessage: "No Lessons Are Created",
+                    },
+                  }}
+                  editable={{
+                    onRowDelete: (selectedRow) =>
+                      new Promise((resolve, reject) => {
+                        deleteLesson(selectedRow, resolve);
+                      }),
+                    saveTooltip: "Delete",
+                  }}
+                  options={{
+                    actionsColumnIndex: -1,
+                    addRowPosition: "last",
+                    headerStyle: {
+                      backgroundColor: "#1d1464",
+                      color: "white",
+                      fontWeight: "bold",
+                      zIndex: 0,
+                    },
+                  }}
+                />
+              </div>
             </div>
           )}
         </ThemeProvider>

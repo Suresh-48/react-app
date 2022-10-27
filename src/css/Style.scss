@@ -22,6 +22,9 @@ body {
   align-items: center;
   position: fixed;
   bottom: 0;
+  @media (min-width:1150px) {
+    padding: 50px;
+  }
 }
 
 .navbar-light .navbar-nav .nav-link {

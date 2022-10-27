@@ -1,5 +1,6 @@
 .view-as-public-page {
   text-decoration: none;
+  color: #375474;
 }
 
 .userName {
@@ -96,8 +97,8 @@ hr:not([size]) {
 
 .teacher-save-changes-active {
   width: 35% !important;
-  border: 3px #3f51b5 !important;
-  background-color: #3f51b5 !important;
+  border: 3px #375474 !important;
+  background-color: #375474 !important;
   color: white !important;
   font-size: 16px !important;
 }
@@ -116,7 +117,7 @@ hr:not([size]) {
 
 .teacher-save-changes-disable {
   width: 35% !important;
-  border: 3px #3f51b5 !important;
+  border: 3px #375474 !important;
   background-color: #00000031 !important;
   color: white !important;
   font-size: 16px !important;
@@ -149,6 +150,6 @@ hr:not([size]) {
 }
 
 .form-check-input:checked {
-  background-color: #198754;
-  border-color: #198754;
+  background-color: #1a1363;
+  border-color: #1a1363;
 }

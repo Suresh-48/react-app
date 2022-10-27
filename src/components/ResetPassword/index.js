@@ -1,41 +1,46 @@
 import axios from "axios";
-import React from "react";
+import React, { useState } from "react";
 import { Col, Container, Row, Form, FormControl, Button } from "react-bootstrap";
-
 import { useHistory } from "react-router-dom";
-
+import { toast } from "react-toastify";
 import { Formik, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import Label from "../../components/core/Label";
+import Api from "../../Api";
 
 const ResetPassword = () => {
   const history = useHistory();
+  const [isSubmit, setIsSubmit] = useState(false);
 
   const submitForm = (values) => {
+    setIsSubmit(true);
     const email = values.email.toLowerCase();
-    axios
-      .post("https://a779-61-3-229-69.ngrok.io/api/v1/parent/resetpassword", {
-        email: email,
-        NewPassword: values.NewPassword,
-      })
+    Api.post("api/v1/user/forget/password", {
+      email: email,
+    })
       .then((response) => {
-        if (response.data.email !== response.data.NewPassword) {
-          history.push("/dashboard");
-        } else {
-          console.log("existing and newpassword not be same");
+        history.push({
+          pathname: "/password/change",
+          state: { email: email },
+        });
+        toast.success(response.data.message);
+        setIsSubmit(false);
+      })
+      .catch((error) => {
+        if (error.response && error.response.status >= 400) {
+          let errorMessage;
+          const errorRequest = error.response.request;
+          if (errorRequest && errorRequest.response) {
+            errorMessage = JSON.parse(errorRequest.response).message;
+          }
+          toast.error(error.response.data.message);
+          setIsSubmit(false);
         }
       });
   };
 
   const loginSchema = Yup.object().shape({
     email: Yup.string().email("Enter Valid Email").required("Email Is Required"),
-    NewPassword: Yup.string()
-      .matches(
-        "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&])",
-        "Password Should Be Mix Of Letters, Numbers, Special Character (!@#$%^&)"
-      )
-      .min(8, "Password Required Minimum 8 Characters")
-      .required("Password Is Required"),
   });
 
   return (
@@ -45,7 +50,6 @@ const ResetPassword = () => {
           <Formik
             initialValues={{
               email: "",
-              NewPassword: "",
             }}
             validationSchema={loginSchema}
             onSubmit={(values) => submitForm(values)}
@@ -69,42 +73,19 @@ const ResetPassword = () => {
                             value={values.email}
                             onChange={handleChange}
                             onBlur={handleBlur}
-                            className="form-width"
-                            placeholder="Email Address"
+                            className="form-width mt-1 mb-2"
+                            placeholder="Enter Email Address"
                           />
                           <ErrorMessage name="email" component="span" className="error text-danger" />
                         </Form.Group>
                       </Col>
-                      <Col md="12" className="mb-3">
-                        <Form.Group className="form-row" style={{ marginRight: 20, width: "100%" }}>
-                          <Label notify={true}>New Password</Label>
-                          <FormControl
-                            type="password"
-                            name="NewPassword"
-                            id="NewPassword"
-                            value={values.NewPassword}
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            className="form-width"
-                            placeholder="New Password "
-                            onCopy={(e) => {
-                              e.preventDefault();
-                              return false;
-                            }}
-                            onPaste={(e) => {
-                              e.preventDefault();
-                              return false;
-                            }}
-                          />
-                          <ErrorMessage name="NewPassword" component="span" className="error text-danger" />
-                        </Form.Group>
-                      </Col>
 
-                      <div className="d-flex justify-content-center mt-3">
-                        <Button className="create-active" type="submit">
-                          Submit
+                      <div className="d-flex justify-content-end mt-3">
+                        <Button className="create-active Kharpi-save-btn" type="submit" disabled={isSubmit}>
+                          Next
                         </Button>
                       </div>
+                      <div className="forgot-note mt-2"><p>*Note: Please Enter valid Email to get a New link to generate a new password</p></div>
                     </Row>
                   </Form>
                 </div>

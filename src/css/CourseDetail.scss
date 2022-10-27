@@ -7,6 +7,14 @@
   justify-content: center;
   margin-bottom: 15px;
 }
+.row-main-lesson {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
 .modal-main {
   margin-right: 45%;
   margin-top: 10px;
@@ -21,34 +29,48 @@
   width: 100%;
   margin-bottom: 10%;
 }
+
 .student-signup {
   color: gray;
   text-decoration: none;
   font-size: 16px;
   width: 100%;
 }
+
 .parent-signup:hover {
   background-color: rgb(255, 255, 255);
 }
+
 .student-signup:hover {
   background-color: rgb(255, 255, 255);
 }
+
 .or-modal-popup {
   margin-bottom: 15px;
-  margin-left: 50%;
+  /* margin-left: 50%; */
+  text-align: center;
 }
 
 .enroll-link {
-  text-decoration: none;
+  color: #375474;
+}
+.enroll-link:hover {
+  color: #375474;
+  opacity: 0.5;
+}
+.enroll-link-disable {
+  color: #375474;
 }
 
-.enroll-link-disable, .enroll-link-disable:hover {
-  text-decoration: none;
-  color:gray;
+.enroll-link-disable,
+.enroll-link-disable:hover {
+  color: gray;
 }
+
 .course-image-style {
   display: grid;
   justify-content: end;
+
   @media screen and (min-width: 320px) and (max-width: 576px) {
     justify-content: center;
   }
@@ -99,8 +121,9 @@
 }
 
 .available-time {
-  width: 95% !important;
+  width: 97% !important;
 }
+
 .schedule-content {
   display: flex;
   flex-direction: column;
@@ -114,6 +137,7 @@
   align-items: flex-end;
   font-weight: bold;
 }
+
 .time {
   padding-left: 7px;
   font-size: 12px;
@@ -129,6 +153,7 @@
   align-self: flex-end;
   padding: 0px;
 }
+
 .teacher-detail {
   display: flex;
   flex-direction: column;
@@ -136,6 +161,7 @@
   padding-left: 11px;
   justify-content: center;
 }
+
 .teachers-name {
   color: black;
   font-size: medium;
@@ -144,11 +170,13 @@
   flex-direction: column;
   align-self: flex-end;
 }
+
 .teachers-spec {
   color: gray;
   font-size: small;
   font-weight: bold;
 }
+
 .profile-link {
   text-decoration: none;
   color: gray;
@@ -156,32 +184,110 @@
   font-weight: bold;
 }
 
-.teachers-not-name{
+.teachers-not-name {
   font-weight: bold;
   display: flex;
   flex-direction: column;
   font-size: 14px;
   align-self: flex-end;
 }
-.teachers-not-spec{
+
+.teachers-not-spec {
   color: gray;
   font-size: 14px;
   margin-bottom: 3px;
   font-weight: bold;
 }
-.no-teacher-detail{
+
+.no-teacher-detail {
   padding-top: 4px !important;
 }
+
 .popup-button-disable {
-  width: 70% !important;
+  width: 100% !important;
   background-color: #00000031 !important;
   color: white !important;
   font-size: 14px !important;
 }
+
 .popup-button-active {
-  width: 70% !important;
-  border:3px #3f51b5 !important;
+  width: 100% !important;
+  border: 3px #3f51b5 !important;
   background-color: #3f51b5 !important;
   color: white !important;
   font-size: 14px !important;
+}
+
+.MuiTableBody-root p {
+  margin-bottom: 0px !important;
+}
+
+.purchased-course {
+  text-decoration: none;
+  color: gray;
+  opacity: 0.5;
+  cursor: default;
+}
+.purchased-course:hover {
+  text-decoration: none;
+  color: gray;
+  cursor: default;
+  opacity: 0.5;
+}
+
+.row-main-lessoncheckout {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: "2%";
+}
+
+.discount-amt-txt {
+  margin-right: 10px;
+  margin-bottom: 0px;
+  color: #b1270b;
+  font-size: 17px;
+  font-weight: bold;
+}
+
+.actual-amt-txt {
+  text-decoration-line: line-through;
+  font-weight: bold;
+  font-size: 17px;
+  color: #555568;
+}
+.detail-page-pTag {
+  font-size: 14px;
+  // padding: 1.8px;
+}
+.detail-col-tag {
+  width: 50%;
+}
+p.form_text1 > span {
+  display: inline-block;
+  min-width: 125px;
+  position: relative;
+  left: 30px;
+  font-weight: 500;
+}
+.teacher-detail-sec {
+  cursor: pointer;
+}
+$font-size: 16px;
+$line-height: 1.5;
+$lines-to-show: 5;
+.ellipsis-text-details {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  font-size: $font-size !important;
+  line-height: $line-height !important;
+  -webkit-line-clamp: $lines-to-show !important;
+  -webkit-box-orient: vertical;
+}
+.checkout-clr {
+  color: #375474;
+}
+.course-checout-card-width {
+  width: 100%;
 }

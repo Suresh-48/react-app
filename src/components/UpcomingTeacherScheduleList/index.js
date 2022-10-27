@@ -11,6 +11,7 @@ import Select from "react-select";
 import Avatar from "@material-ui/core/Avatar";
 import Button from "@restart/ui/esm/Button";
 import { Tab, Tabs } from "@material-ui/core";
+import { useHistory } from "react-router-dom";
 
 // Component
 import Loader from "../core/Loader";
@@ -19,11 +20,15 @@ import { ROLES_TEACHER } from "../../constants/roles";
 
 // Api
 import Api from "../../Api";
+
 //icon
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faCopy, faCalendarDay } from "@fortawesome/free-solid-svg-icons";
+
 // style
 import "../../css/UpcomingSchedule.scss";
+import { setDay } from "date-fns";
+import { customStyles } from "../core/Selector";
 
 function UpcomingTeacherScheduleList(props) {
   const [show, setshow] = useState(false);
@@ -42,11 +47,23 @@ function UpcomingTeacherScheduleList(props) {
   const [teacherId, setTeacherId] = useState("");
   const [modelValue, setModelValue] = useState("");
   const [value, setValue] = useState(0);
+  const [isSubmit, setisSubmit] = useState(false);
+
+  const history = useHistory();
+  const [teacherScheduleCalendar, setTeacherScheduleCalendar] = useState([]);
+  const [teacherScheduleCalendarData, setTeacherScheduleCalendarData] = useState([]);
+  const [teacherCourseScheduleId, setTeacherCourseScheduleId] = useState("");
+  const [zoomStartTimeGet, setZoomStartTimeGet] = useState("");
+  const [sessionEndModal, setSessionEndModal] = useState(false);
+  const [courseId, setCourseId] = useState("");
+  const [courseScheduleId, setCourseScheduleId] = useState("");
+  const [courseLessonId, setCourseLessonId] = useState("");
+  const token = localStorage.getItem("sessionId");
 
   // Column Heading
   const teacherColumns = [
     {
-      title: "S.no",
+      title: "S.No",
       width: "10%",
       render: (rowData) => `${rowData?.tableData?.id + 1}`,
     },
@@ -64,7 +81,17 @@ function UpcomingTeacherScheduleList(props) {
     },
     {
       title: "Course Name",
-      field: "courseId.name",
+      render: (rowData) => (
+        <Link
+          to={{
+            pathname: `/course/detail/${rowData?.courseId?.aliasName}`,
+            state: { courseId: rowData?.id },
+          }}
+          className="linkColor"
+        >
+          {rowData?.courseId?.name}
+        </Link>
+      ),
     },
     {
       title: "Lesson Name",
@@ -72,12 +99,12 @@ function UpcomingTeacherScheduleList(props) {
     },
     {
       title: "Duration",
-      render: (rowData) => `${rowData?.courseId.duration + " hour"}`,
+      render: (rowData) => `${rowData?.courseId?.duration + " hour"}`,
     },
   ];
   const adminColumns = [
     {
-      title: "S.no",
+      title: "S.No",
       width: "10%",
       render: (rowData) => `${rowData?.tableData?.id + 1}`,
     },
@@ -90,7 +117,17 @@ function UpcomingTeacherScheduleList(props) {
     },
     {
       title: "Course Name",
-      field: "courseId.name",
+      render: (rowData) => (
+        <Link
+          className="linkColor"
+          to={{
+            pathname: `/course/detail/${rowData?.courseId?.aliasName}`,
+            state: { courseId: rowData?.id },
+          }}
+        >
+          {rowData?.courseId?.name}
+        </Link>
+      ),
     },
     {
       title: "Lesson Name",
@@ -110,7 +147,7 @@ function UpcomingTeacherScheduleList(props) {
     },
     {
       title: "Duration",
-      render: (rowData) => `${rowData?.courseId.duration + "hour"}`,
+      render: (rowData) => `${rowData?.courseId?.duration + "hour"}`,
     },
   ];
 
@@ -130,32 +167,51 @@ function UpcomingTeacherScheduleList(props) {
     TeacherUpcomingScheduleData();
     TeacherCompletedScheduleData();
     AdminTeacherUpcomingScheduleData();
-    const currentDate = moment().tz("America/Chicago").format();
-    const date = moment(currentDate).utc().format("ll");
-    var lessTime = moment(currentDate).format("LT");
+    const currentDate = moment()
+      .tz("America/Chicago")
+      .format();
+    const date = moment(currentDate)
+      .tz("America/Chicago")
+      .format("ll");
+    var lessTime = moment(currentDate)
+      .tz("America/Chicago")
+      .format("HH:mm");
     setCurrentDate(date);
     setLessTime(lessTime);
     getApprovedTeacher();
   }, []);
 
+  //logout
+  const logout = () => {
+    setTimeout(() => {
+      localStorage.clear(history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
+
   // Get Teacher Upcoming Schedule
   const TeacherUpcomingScheduleData = () => {
     const teacherId = localStorage.getItem("teacherId");
+    setTeacherId(teacherId);
     Api.get("/api/v1/teacherUpcomingSchedule/upcoming", {
       params: {
         teacherId: teacherId,
       },
     }).then((response) => {
-      const teacherUpcomingData = response.data.upcomingList;
-      teacherUpcomingData.sort(function compare(a, b) {
+      const teacherUpcomingData = response?.data?.upcomingList;
+      setTeacherScheduleCalendarData(response?.data?.upcomingCalendarList);
+
+      teacherUpcomingData?.sort(function compare(a, b) {
         var dateA = new Date(a.lessonDate);
         var dateB = new Date(b.lessonDate);
         return dateA - dateB;
       });
       setTeacherUpcomingData(teacherUpcomingData);
-      const orginalTime = response.data.upcomingList;
-      orginalTime.forEach(function (list) {
-        const time = moment(list.courseScheduleId.startTime, "LT").subtract(15, "minutes").format("LT");
+      const orginalTime = response?.data?.upcomingList;
+      orginalTime.forEach(function(list) {
+        const time = moment(list?.courseScheduleId?.startTime, "LT")
+          .subtract(15, "minutes")
+          .format("HH:mm");
         list.courseScheduleId["zoomTime"] = time;
       });
       setisLoading(false);
@@ -170,16 +226,18 @@ function UpcomingTeacherScheduleList(props) {
         teacherId: teacherId,
       },
     }).then((response) => {
-      const teacherCompletedData = response.data.completedList;
+      const teacherCompletedData = response?.data?.completedList;
       teacherCompletedData.sort(function compare(a, b) {
         var dateA = new Date(a.lessonDate);
         var dateB = new Date(b.lessonDate);
         return dateA - dateB;
       });
       setTeacherCompletedData(teacherCompletedData);
-      const orginalTime = response.data.completedList;
-      orginalTime.forEach(function (list) {
-        const time = moment(list.courseScheduleId.startTime, "LT").subtract(15, "minutes").format("LT");
+      const orginalTime = response?.data?.completedList;
+      orginalTime.forEach(function(list) {
+        const time = moment(list?.courseScheduleId?.startTime, "LT")
+          .subtract(15, "minutes")
+          .format("HH:mm");
         list.courseScheduleId["zoomTime"] = time;
       });
       setisLoading(false);
@@ -188,6 +246,7 @@ function UpcomingTeacherScheduleList(props) {
 
   // Change Teacher
   const submitForm = () => {
+    setisSubmit(false);
     Api.post("api/v1/teacherUpcomingSchedule/update/teacher", {
       teacherId: teacherId,
       teacherScheduleId: modelValue.id,
@@ -196,6 +255,7 @@ function UpcomingTeacherScheduleList(props) {
         setTeacherName("");
         setshow(false);
         AdminTeacherUpcomingScheduleData();
+        toast.success("Updated");
       })
       .catch((error) => {
         if (error.response && error.response.status >= 400) {
@@ -213,6 +273,7 @@ function UpcomingTeacherScheduleList(props) {
   const AdminTeacherUpcomingScheduleData = () => {
     Api.get("/api/v1/teacherUpcomingSchedule").then((response) => {
       const dataValues = response.data.upcomingList;
+      setTeacherScheduleCalendar(response.data.upcomingCalendarList);
       dataValues.sort(function compare(a, b) {
         var dateA = new Date(a.lessonDate);
         var dateB = new Date(b.lessonDate);
@@ -230,6 +291,27 @@ function UpcomingTeacherScheduleList(props) {
     });
   };
 
+  const zoomTiming = (e) => {
+    const teacherId = localStorage.getItem("teacherId");
+    const newDate = new Date();
+    const sessionTiming = newDate.toLocaleTimeString();
+    const date = newDate.toLocaleDateString();
+
+    Api.patch("/api/v1/teacherUpcomingSchedule/zoom/timing", {
+      teacherUpcomingScheduleId: teacherCourseScheduleId,
+      zoomStartTime: e === "open" ? sessionTiming : zoomStartTimeGet,
+      zoomEndTime: e === "close" ? sessionTiming : "",
+      teacherId: teacherId,
+      date: date,
+      courseName: courseScheduleId.courseId.aliasName,
+      lessonName: courseScheduleId.courseLessonId.lessonName,
+      teacherPayableAmount: courseScheduleId.teacherId.teacherSessionAmount,
+    }).then((res) => {
+      const ZoomstartTime = res.data.zoomDetails.zoomStartTime;
+      setZoomStartTimeGet(ZoomstartTime);
+    });
+  };
+
   const tableTheme = createTheme({
     overrides: {
       MuiTableRow: {
@@ -243,6 +325,13 @@ function UpcomingTeacherScheduleList(props) {
     },
   });
 
+  const showModal = () => {
+    setSessionEndModal(false);
+    setTimeout(() => {
+      setSessionEndModal(true);
+    }, 2000);
+  };
+
   return (
     <div>
       <Container>
@@ -250,6 +339,22 @@ function UpcomingTeacherScheduleList(props) {
           <Loader />
         ) : (
           <div>
+            {/* <div className="d-flex justify-content-end">
+              <FontAwesomeIcon
+                icon={faCalendarDay}
+                color="#397ad4"
+                style={{ cursor: "pointer", fontSize: 30 }}
+                onClick={() => {
+                  history.push({
+                    pathname: "/calendar/view/upcoming/schedule",
+                    state: {
+                      teacherId: teacherId,
+                      teacherSchedule: teacherScheduleCalendarData,
+                    },
+                  });
+                }}
+              />
+            </div> */}
             {isTeacher ? (
               <div>
                 <Tabs
@@ -267,7 +372,7 @@ function UpcomingTeacherScheduleList(props) {
                         </Col>
                       </Row>
                     }
-                    style={{ width: "50%" }}
+                    style={{ minWidth: "50%" }}
                     value={0}
                   />
 
@@ -279,112 +384,115 @@ function UpcomingTeacherScheduleList(props) {
                         </Col>
                       </Row>
                     }
-                    style={{ width: "50%" }}
+                    style={{ minWidth: "50%" }}
                     value={1}
                   />
                 </Tabs>
                 <hr />
                 {value === 0 ? (
-                  <div>
-                    <div className="d-flex justify-content-center align-items-center py-3">
-                      <h5>Upcoming Schedule List</h5>
+                  <div className="mb-3">
+                    <div className="py-3">
+                      <h5>Upcoming Schedule</h5>
                     </div>
-                    <ThemeProvider theme={tableTheme}>
-                      <MaterialTable
-                        icons={tableIcons}
-                        columns={teacherColumns}
-                        data={teacherUpcomingData}
-                        options={{
-                          actionsColumnIndex: -1,
-                          addRowPosition: "last",
-                          headerStyle: {
-                            fontWeight: "bold",
-                            backgroundColor: "#CCE6FF",
-                            zIndex: 0,
-                          },
-                          showTitle: false,
-                        }}
-                        actions={[
-                          (rowData) => ({
-                            icon: () => (
-                              <p
-                                className={`${
-                                  rowData.lessonDate === CurrentDate && rowData.courseScheduleId.zoomTime <= lessTime
-                                    ? "zoom-view-style"
-                                    : "zoom-view-disable-style"
-                                }`}
-                              >
-                                Join
-                              </p>
-                            ),
-                            tooltip: "Zoom Link",
-                            onClick: (event, rowData) => {
-                              if (rowData.lessonDate === CurrentDate && rowData.courseScheduleId.zoomTime <= lessTime) {
-                                setshow(true);
-                                setZoomLink(rowData.courseScheduleId);
-                              } else {
-                                setshowAlert(true);
-                                setDateAndTime(rowData);
-                              }
+                    <div className="material-table-responsive">
+                      <ThemeProvider theme={tableTheme}>
+                        <MaterialTable
+                          style={{ marginBottom: "10px" }}
+                          icons={tableIcons}
+                          columns={teacherColumns}
+                          data={teacherUpcomingData}
+                          options={{
+                            actionsColumnIndex: -1,
+                            addRowPosition: "last",
+                            headerStyle: {
+                              fontWeight: "bold",
+                              backgroundColor: "#1d1464",
+                              color: "white",
+                              zIndex: 0,
                             },
-                          }),
-                        ]}
-                        localization={{
-                          body: {
-                            emptyDataSourceMessage: "No Upcoming Schedule List",
-                          },
-                        }}
-                      />
-                    </ThemeProvider>
-                    <div>
-                      <Modal show={show} centered onHide={() => handleModal()}>
-                        <Modal.Body id="contained-modal-title-vcenter">
-                          <div className="align-items-center zoom-content">
-                            <h4 className="mt-2">Zoom Link</h4>
-                            <Row className="my-3 zoom-modal-style">
-                              <h6 className="d-block">Link</h6>
-                              <Col sm={10} className="copy-content">
-                                <Link
-                                  className="link-text"
-                                  rel="noopener noreferrer"
-                                  target="_blank"
-                                  onClick={() => window.open(`${ZoomLink?.zoomId}+${ZoomLink?.zoomPassword}`, "_blank")}
+                            showTitle: false,
+                          }}
+                          actions={[
+                            (rowData) => ({
+                              icon: () => (
+                                <p
+                                  className={`${
+                                    rowData?.lessonDate === CurrentDate && rowData?.courseScheduleId?.zoomTime <= lessTime
+                                      ? "zoom-view-style"
+                                      : "zoom-view-disable-style"
+                                  }`}
                                 >
-                                  {ZoomLink?.zoomId}
-                                </Link>
-                              </Col>
-                              <Col sm={2} className="d-flex justify-content-center align-items-center">
-                                <div>
-                                  <CopyToClipboard
-                                    text={ZoomLink.zoomId}
-                                    className="mx-1 copy-icon"
-                                    onCopy={() => toast.success("Link Copied...")}
-                                  >
-                                    <FontAwesomeIcon icon={faCopy} size="lg" color="#397ad4" />
-                                  </CopyToClipboard>
-                                </div>
-                              </Col>
-                            </Row>
-                            <Row className="mb-3 zoom-modal-style">
-                              <h6 className="d-block">Password</h6>
-                              <br />
-                              <Col sm={10} className="copy-content">
-                                <Link className="link-text text-decoration-none" style={{ fontSize: 14 }}>
-                                  {ZoomLink?.zoomPassword}
-                                </Link>
-                              </Col>
-                              <Col sm={2} className="d-flex justify-content-center align-items-center">
-                                <div>
-                                  <CopyToClipboard
-                                    text={ZoomLink.zoomPassword}
-                                    className="mx-1 copy-icon"
-                                    onCopy={() => toast.success("Password Copied...")}
-                                  >
-                                    <FontAwesomeIcon icon={faCopy} size="lg" color="#397ad4" />
-                                  </CopyToClipboard>
-                                </div>
-                              </Col>
-                            </Row>
+                                  Join
+                                </p>
+                              ),
+                              tooltip: "Zoom Link",
+                              onClick: (event, rowData) => {
+                                setTeacherCourseScheduleId(rowData.id);
+                                setCourseScheduleId(rowData);
+                                if (
+                                  rowData?.lessonDate === CurrentDate &&
+                                  rowData?.courseScheduleId?.zoomTime <= lessTime
+                                ) {
+                                  setshow(true);
+                                  setZoomLink(rowData?.courseLessonId);
+                                } else {
+                                  setshowAlert(true);
+                                  setDateAndTime(rowData);
+                                }
+                              },
+                            }),
+                          ]}
+                          localization={{
+                            body: {
+                              emptyDataSourceMessage: "No Upcoming Schedule",
+                            },
+                          }}
+                        />
+                      </ThemeProvider>
+                    </div>
+                    <div>
+                      <Modal show={show} centered backdrop="static">
+                        <Modal.Header className="border-bottom-0 pb-0" />
+                        <Modal.Body id="contained-modal-title-vcenter" className="zoom-modal-popup pt-0">
+                          <div className="align-items-center zoom-content">
+                            <h4 className="mt-2">Are you sure to start the session...!</h4>
+                            <div className="d-flex mt-4 ">
+                              <Button
+                                variant="contained"
+                                className="zoom-start-btn mx-2 filter-btn"
+                                rel="noopener noreferrer"
+                                target="_blank"
+                                onClick={() => {
+                                  zoomTiming("open");
+                                  setshow(false);
+                                  showModal();
+                                  window.open(`${ZoomLink?.zoomId}+${ZoomLink?.zoomPassword}`, "_blank");
+                                }}
+                              >
+                                YES
+                              </Button>
+                              <Button className="zoom-cancel-btn mx-2 Kharpi-cancel-btn" onClick={() => handleModal()}>
+                                NO
+                              </Button>
+                            </div>
+                          </div>
+                        </Modal.Body>
+                      </Modal>
+                      <Modal show={sessionEndModal} centered backdrop="static">
+                        <Modal.Header className="border-bottom-0 pb-0" />
+                        <Modal.Body id="contained-modal-title-vcenter" className="zoom-modal-popup pt-0">
+                          <div className="align-items-center zoom-content">
+                            <h4 className="mt-2">Session has ended...!</h4>
+                            <Button
+                              variant="contained"
+                              className="zoom-start-btn mx-2 mt-4 Kharpi-save-btn"
+                              onClick={() => {
+                                zoomTiming("close");
+                                setSessionEndModal(false);
+                              }}
+                            >
+                              OK
+                            </Button>
                           </div>
                         </Modal.Body>
                       </Modal>
@@ -394,20 +502,18 @@ function UpcomingTeacherScheduleList(props) {
                             <div className="mb-2">
                               <h5 className="d-flex justify-content-center align-items-center">Notification</h5>
                               <p className="d-flex justify-content-center">
-                                {`${
-                                  "Zoom Link Activate Before 15 Minutes" +
+                                {`${"Zoom Link Activate Before 15 Minutes" +
                                   " " +
                                   "(" +
                                   " " +
                                   DateAndTime.lessonDate +
                                   " " +
-                                  ")"
-                                }`}
+                                  ")"}`}
                               </p>
                             </div>
                             <Row>
                               <Col>
-                                <Button className="delete-cancel" variant="light" onClick={() => closeShow()}>
+                                <Button className="delete-cancel" onClick={() => closeShow()}>
                                   OK
                                 </Button>
                               </Col>
@@ -418,72 +524,80 @@ function UpcomingTeacherScheduleList(props) {
                     </div>
                   </div>
                 ) : (
-                  <div>
-                    <div className="d-flex justify-content-center align-items-center py-3">
+                  <div className="mb-3">
+                    <div className="py-3">
                       <h5>Completed Schedule List</h5>
                     </div>
-                    <ThemeProvider theme={tableTheme}>
-                      <MaterialTable
-                        icons={tableIcons}
-                        columns={teacherColumns}
-                        data={teacherCompletedData}
-                        options={{
-                          actionsColumnIndex: -1,
-                          addRowPosition: "last",
-                          headerStyle: {
-                            fontWeight: "bold",
-                            backgroundColor: "#CCE6FF",
-                            zIndex: 0,
-                          },
-                          showTitle: false,
-                        }}
-                        localization={{
-                          body: {
-                            emptyDataSourceMessage: "No Completed Schedule List",
-                          },
-                        }}
-                      />
-                    </ThemeProvider>
+                    <div className="material-table-responsive">
+                      <ThemeProvider theme={tableTheme}>
+                        <MaterialTable
+                          icons={tableIcons}
+                          columns={teacherColumns}
+                          data={teacherCompletedData}
+                          options={{
+                            actionsColumnIndex: -1,
+                            addRowPosition: "last",
+                            headerStyle: {
+                              fontWeight: "bold",
+                              backgroundColor: "#1d1464",
+                              color: "white",
+                              zIndex: 0,
+                            },
+                            showTitle: false,
+                          }}
+                          localization={{
+                            body: {
+                              emptyDataSourceMessage: "No Completed Schedule ",
+                            },
+                          }}
+                        />
+                      </ThemeProvider>
+                    </div>
                   </div>
                 )}
               </div>
             ) : (
               <div>
-                <div className="d-flex justify-content-center align-items-center py-3">
-                  <h5>Teachers Upcoming Lesson List</h5>
+                <div className="py-3">
+                  <h5>Teachers Upcoming Lessons</h5>
                 </div>
-                <ThemeProvider theme={tableTheme}>
-                  <MaterialTable
-                    icons={tableIcons}
-                    columns={adminColumns}
-                    data={data}
-                    options={{
-                      actionsColumnIndex: -1,
-                      addRowPosition: "last",
-                      headerStyle: {
-                        fontWeight: "bold",
-                        backgroundColor: "#CCE6FF",
-                        zIndex: 0,
-                      },
-                      showTitle: false,
-                    }}
-                    actions={[
-                      (rowData) => ({
-                        icon: () => <p className={"zoom-view-style"}>Change Teacher</p>,
-                        tooltip: "Click",
-                        onClick: (event, rowData) => {
-                          setModelValue(rowData);
-                          setshow(true);
+                <div className="material-table-responsive">
+                  <ThemeProvider theme={tableTheme}>
+                    <MaterialTable
+                      icons={tableIcons}
+                      columns={adminColumns}
+                      data={data}
+                      style={{ marginBottom: "10px" }}
+                      options={{
+                        actionsColumnIndex: -1,
+                        addRowPosition: "last",
+                        headerStyle: {
+                          fontWeight: "bold",
+                          backgroundColor: "#1d1464",
+                          color: "white",
+                          zIndex: 0,
                         },
-                      }),
-                    ]}
-                    localization={{
-                      body: {
-                        emptyDataSourceMessage: "No Teacher Upcoming Lesson List",
-                      },
-                    }}
-                  />
-                </ThemeProvider>
+                        showTitle: false,
+                      }}
+                      actions={[
+                        (rowData) => ({
+                          icon: () => <p className={"zoom-view-style"}>Change Teacher</p>,
+                          tooltip: "Click",
+                          onClick: (event, rowData) => {
+                            setModelValue(rowData);
+                            setshow(true);
+                            setisSubmit(true);
+                          },
+                        }),
+                      ]}
+                      localization={{
+                        body: {
+                          emptyDataSourceMessage: "No Teacher Upcoming Lesson List",
+                        },
+                      }}
+                    />
+                  </ThemeProvider>
+                </div>
                 <Modal show={show} centered onHide={() => handleModal()}>
                   <Modal.Body id="contained-modal-title-vcenter">
                     <div className="container py-3">
@@ -499,6 +613,7 @@ function UpcomingTeacherScheduleList(props) {
                               </Form.Label>
                               <Select
                                 value={teacherName}
+                                styles={customStyles}
                                 placeholder="Assign Teachers..."
                                 onChange={(e) => {
                                   setTeacherName(e);
@@ -509,18 +624,39 @@ function UpcomingTeacherScheduleList(props) {
                                     options: approvedTeachers.map((list) => ({
                                       value: list.id,
                                       label: (
-                                        <div className="d-flex justify-content-start align-items-center">
-                                          <Avatar round size="38" className="d-flex justify-content-center">
-                                            <p className="dropdown-option mb-0">
-                                              {list?.firstName.substring(0, 1)}
-                                              {list.middleName
-                                                ? list?.middleName.substring(0, 1)
-                                                : list?.lastName.substring(0, 1)}
-                                            </p>
-                                          </Avatar>
-                                          <div className="dropdown-names">
-                                            {`${list.firstName + " " + list.middleName + " " + list.lastName + " "}`}
-                                          </div>
+                                        <div>
+                                          {list.imageUrl ? (
+                                            <div className="d-flex justify-content-start align-items-center">
+                                              <Avatar src={list.imageUrl} alr="" round={true} />
+                                              <div className="dropdown-names">
+                                                {`${list.firstName +
+                                                  " " +
+                                                  list.middleName +
+                                                  " " +
+                                                  list.lastName +
+                                                  " "}`}
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div className="d-flex justify-content-start align-items-center">
+                                              <Avatar round size="38" className="d-flex justify-content-center">
+                                                <p className="dropdown-option mb-0">
+                                                  {list?.firstName.substring(0, 1)}
+                                                  {list.middleName
+                                                    ? list?.middleName.substring(0, 1)
+                                                    : list?.lastName.substring(0, 1)}
+                                                </p>
+                                              </Avatar>
+                                              <div className="dropdown-names">
+                                                {`${list.firstName +
+                                                  " " +
+                                                  list.middleName +
+                                                  " " +
+                                                  list.lastName +
+                                                  " "}`}
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                       ),
                                       name: ` ${list.firstName} ${list.middleName} ${list.lastName}`,
@@ -532,7 +668,12 @@ function UpcomingTeacherScheduleList(props) {
                           </Form>
                         </Row>
                         <div className="button-div">
-                          <Button className="submit-button" variant="contained" onClick={submitForm}>
+                          <Button
+                            className={`${teacherName !== "" && isSubmit ? "submit-button" : "disable-submit-button"}`}
+                            variant="contained"
+                            disabled={teacherName === ""}
+                            onClick={() => submitForm()}
+                          >
                             SAVE CHANGES
                           </Button>
                         </div>

@@ -71,29 +71,56 @@ function CourseSchedule(props) {
     {
       title: "Teacher Assigned",
       render: (rowData) =>
-        rowData.teacherId ? `${rowData.teacherId.firstName + " " + rowData.teacherId.lastName}` : "Not Scheduled",
+        rowData.teacherId ? `${rowData?.teacherId?.firstName + " " + rowData?.teacherId?.lastName}` : "Not Scheduled",
     },
   ];
 
+  // Log out
+  const logout = () => {
+    setTimeout(() => {
+      localStorage.clear(history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
+
   // Get course schedule
   const courseSchedule = () => {
+    const token = localStorage.getItem("sessionId");
     Api.get("/api/v1/courseSchedule/course/list", {
       params: {
         courseId: courseId,
+        token: token,
       },
-    }).then((res) => {
-      const list = res.data.courseList;
-      setData(list);
-      setIsLoading(false);
-    });
+    })
+      .then((res) => {
+        const list = res.data.courseList;
+        setData(list);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
 
   // Get course detail
   const getCourseDetail = () => {
-    Api.get(`api/v1/course/${courseId}`).then((response) => {
-      const courseDetail = response.data.data;
-      setCourseDetail(courseDetail);
-    });
+    const token = localStorage.getItem("sessionId");
+    Api.get(`api/v1/course/${courseId}`, { token: token })
+      .then((response) => {
+        const courseDetail = response.data.data;
+        setCourseDetail(courseDetail);
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
   useEffect(() => {
     courseSchedule();
@@ -103,8 +130,13 @@ function CourseSchedule(props) {
   // Delete Course Schedule
   const deleteCourseSchedule = (data, reload) => {
     const date = Date.now();
-    const cTime = moment(date).tz("America/Chicago").format("LT");
-    const cDate = moment(date).tz("America/Chicago").format("ll");
+    const cTime = moment(date)
+      .tz("America/Chicago")
+      .format("LT");
+    const cDate = moment(date)
+      .tz("America/Chicago")
+      .format("ll");
+    const token = localStorage.getItem("sessionId");
 
     Api.delete(`api/v1/courseSchedule/`, {
       params: {
@@ -112,6 +144,7 @@ function CourseSchedule(props) {
         courseId: courseId,
         currentDate: cDate,
         currentTime: cTime,
+        token: token,
       },
     })
       .then((res) => {
@@ -129,71 +162,79 @@ function CourseSchedule(props) {
           reload();
           toast.error(error.response.data.message);
         }
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
       });
   };
 
   return (
-    <Container>
+    <Container className="mt-1">
       <CourseSideMenu courseId={courseId} />
-      <div className=" row mt-3 main">
+      <div className=" row">
         <ThemeProvider theme={tableTheme}>
           {isLoading ? (
             <Loader />
           ) : (
-            <div>
-              <div className="d-flex justify-content-center align-items-center py-3">
-                <h4>Schedule List</h4>
+            <div className="edit-course-lesson-style mb-3">
+              <div className="mt-2 py-3">
+                <h4>Schedules</h4>
               </div>
-              <MaterialTable
-                style={{ width: "100%" }}
-                icons={tableIcons}
-                title={data?.length === 0 ? "" : data[0]?.courseId?.name}
-                data={data}
-                columns={columns}
-                actions={[
-                  {
-                    icon: () => <AddBox style={{ color: "#397ad4" }} />,
-                    tooltip: "Add Schedule",
-                    isFreeAction: true,
-                    onClick: (event, rowData) => {
-                      history.push({
-                        pathname: "/course/schedule/add",
-                        state: {
-                          courseId: courseId,
-                          courseName: courseDetail?.name,
-                        },
-                      });
+              <div className="material-table-responsive">
+                <MaterialTable
+                  style={{ width: "100%" }}
+                  icons={tableIcons}
+                  title={data?.length === 0 ? "" : data[0]?.courseId?.name}
+                  data={data}
+                  columns={columns}
+                  actions={[
+                    {
+                      icon: () => <AddBox style={{ color: "#1d1464" }} />,
+                      tooltip: "Add Schedule",
+                      isFreeAction: true,
+                      onClick: (event, rowData) => {
+                        history.push({
+                          pathname: "/course/schedule/add",
+                          state: {
+                            courseId: courseId,
+                            courseName: courseDetail?.name,
+                          },
+                        });
+                      },
                     },
-                  },
-                  {
-                    icon: () => <Edit style={{ color: "#1458e0" }} />,
-                    tooltip: "Edit Schedule",
-                    onClick: (event, rowData) => {
-                      history.push("/course/schedule/update", rowData);
+                    {
+                      icon: () => <Edit style={{ color: "#1458e0" }} />,
+                      tooltip: "Edit Schedule",
+                      onClick: (event, rowData) => {
+                        history.push("/course/schedule/update", rowData);
+                      },
                     },
-                  },
-                ]}
-                editable={{
-                  onRowDelete: (selectedRow) =>
-                    new Promise((resolve, reject) => {
-                      deleteCourseSchedule(selectedRow, resolve);
-                    }),
-                }}
-                localization={{
-                  body: {
-                    emptyDataSourceMessage: "Schedule Yet to be Created!.",
-                  },
-                }}
-                options={{
-                  actionsColumnIndex: -1,
-                  addRowPosition: "last",
-                  headerStyle: {
-                    fontWeight: "bold",
-                    backgroundColor: "#CCE6FF",
-                    zIndex: 0,
-                  },
-                }}
-              />
+                  ]}
+                  editable={{
+                    onRowDelete: (selectedRow) =>
+                      new Promise((resolve, reject) => {
+                        deleteCourseSchedule(selectedRow, resolve);
+                      }),
+                  }}
+                  localization={{
+                    body: {
+                      emptyDataSourceMessage: "Schedule Yet to be Created!.",
+                    },
+                  }}
+                  options={{
+                    actionsColumnIndex: -1,
+                    addRowPosition: "last",
+                    headerStyle: {
+                      fontWeight: "bold",
+                      backgroundColor: "#1d1464",
+                      color: "white",
+                      zIndex: 0,
+                    },
+                  }}
+                />
+              </div>
             </div>
           )}
         </ThemeProvider>

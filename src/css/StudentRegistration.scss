@@ -19,3 +19,13 @@ input::-ms-reveal,
 input::-ms-clear {
   display: none;
 }
+
+.captcha-form {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+.captcha-text {
+  cursor: pointer;
+  color: blue;
+}

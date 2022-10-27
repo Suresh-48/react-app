@@ -97,9 +97,6 @@ import CreateCourseSchedule from "./components/CourseSchedule/CreateCourseSchedu
 // Edit Course Schedule
 import EditCourseSchedule from "./components/CourseSchedule/EditCourseSchedule";
 
-// Edit Admin Details
-import EditAdminDetails from "./components/EditAdminDetails";
-
 // Teacher Signup
 import TeacherSignup from "./components/TeacherSignup";
 
@@ -156,11 +153,13 @@ import TeacherQuizReview from "./components/TeacherQuizReview";
 
 //Homework Review
 import TeacherHomeworkReview from "./components/TeacherHomeworkReview";
+
 //HomeWork Preview
 import HomeWorkPreview from "./components/HomeWorkPreview";
 
-// HomeWork Answer
+// Student Can View Home Work Review Answer
 import HomeWorkAnswer from "./components/HomeWorkAnswer";
+
 //TeacherDetails
 import TeacherDetails from "./components/TeacherDetails";
 
@@ -180,7 +179,7 @@ import QuizReview from "./components/QuizReview";
 import CalendarView from "./components/CalendarView";
 
 // Teacher Application
-import TeacherApplicationForm from "./components/TeacherApplicationForm";
+import TeacherApplication from "./components/TeacherApplication";
 
 // Teacher Available
 import TeacherAvailable from "./components/TeacherAvailable";
@@ -188,24 +187,78 @@ import TeacherAvailable from "./components/TeacherAvailable";
 // Student List for Each Class
 import EachClassStudentList from "./components/EachClassStudentList";
 
-// Completed Course List
-import CompletedCourseList from "./components/CompletedCourseList";
-
 //Course History
 import CourseHistory from "./components/CourseHistory";
 
 //Student Transcript
 import StudentTranscript from "./components/StudentTranscript";
 
-//Admin Can View Student Upcoming Schedule List and Parent can view student upcoming schedule list 
+//Admin Can View Student Upcoming Schedule List and Parent can view student upcoming schedule list
 import AdminStudentUpcomingScheduleList from "./components/AdminStudentUpcomingScheduleList";
 
-// Edit Quiz Question
-import EditQuiz from "./components/CreateQuiz/EditQuiz";
+// Edit Quiz
+import EditQuizIntegration from "./components/EditQuizIntegration";
 
 // Edit Home Work Question
-import EditHomeWork from "./components/CreateHomeWork/EditHomeWork";
+import EditHomeWorkIntegration from "./components/EditHomeWorkIntegration";
 
+// Student Public Profile
+import StudentPublicProfile from "./components/StudentPublicProfile";
+
+// Student Public Profile
+import ParentPublicProfile from "./components/ParentPublicProfile";
+
+//Edit Reviewed Quiz
+import EditReviewedQuiz from "./components/EditReviewedQuiz";
+
+//Edit Reviewed HomeWork
+import EditReviewedHomeWork from "./components/EditReviewedHomeWork";
+
+// Teacher Application for admin
+import TeacherApplicationForAdmin from "./components/TeacherApplicationForAdmin";
+
+// Favourite Course
+import FavouriteCourse from "./components/FavouriteCourse";
+
+// Schedule List for Student in Calendar Format
+import ScheduleForCalendarFormat from "./components/ScheduleForCalendarFormat";
+
+// Active Enroll Course List for parent and student
+import ActiveEnrollCourseList from "./components/ActiveEnrollCourseList";
+
+// Complete course list for student
+import CompleteCourseList from "./components/CompleteCourseList";
+
+// Change Password
+import ChangePassword from "./components/ChangePassword";
+
+//Teacher Application Details for User
+import DisplayTeacherApplication from "./components/TeacherApplication/displayTeacherApplication";
+//Homw Work Integration
+import HomeWorkIntegration from "./components/HomeWorkIntegration";
+
+// Quiz Integration
+import QuizIntegration from "./components/QuizIntegration";
+
+// HomeWork Review
+import HomeWorkReview from "./components/HomeWorkReview";
+
+//Forum
+import Forum from "./components/Forum/ForumConversation";
+import ForumSelect from "./components/Forum/forum";
+import ForumComments from "./components/Forum/ForumComments";
+import AdminForum from "./components/Forum/AdminForum";
+import TeacherProfile from "./components/TeacherPublicProfile/TeacherProfile";
+
+//Chat Bot Conversation
+import ChatBotConversation from "./components/ChatBotConversation/ChatBotConversation";
+
+//FAQ
+import FAQ from "./components/FAQ";
+import TeacherPayment from "./components/TeacherDetails/teacherPayment";
+import Trainers from "./components/Trainers";
+import TermsOfUse from "./components/TermsOfUse";
+import PrivacyPolicy from "./components/PrivacyPolicy";
 // List of routes
 const routes = [
   {
@@ -269,22 +322,16 @@ const routes = [
     component: AdminLogin,
   },
   {
-    path: "/landing-page",
+    path: "/kharpi",
     exact: true,
     name: "LandingPage",
     component: LandingPage,
   },
   {
-    path: "/set-password",
+    path: "/set/password",
     exact: true,
     name: "SetPassword",
     component: SetPassword,
-  },
-  {
-    path: "/reset-password",
-    exact: true,
-    name: "ResetPassword",
-    component: ResetPassword,
   },
   {
     path: "/parent/signup",
@@ -413,12 +460,6 @@ const routes = [
     component: EditCourseSchedule,
   },
   {
-    path: "/admin/details",
-    exact: true,
-    name: "EditAdminDetails",
-    component: EditAdminDetails,
-  },
-  {
     path: "/teacher/signup",
     exact: true,
     name: "TeacherSignup",
@@ -443,6 +484,14 @@ const routes = [
     name: "EditTeacherDetails",
     component: EditTeacherDetails,
   },
+
+  {
+    path: "/teacher/application/details",
+    exact: true,
+    name: "DisplayTeacherApplication",
+    component: DisplayTeacherApplication,
+  },
+
   {
     path: "/payment/list",
     exact: true,
@@ -468,7 +517,7 @@ const routes = [
     component: UpcomingScheduleList,
   },
   {
-    path: "/teacher/profile/public",
+    path: "/teacher/profile/view",
     exact: true,
     name: "Techer Public Profile",
     component: TeacherPublicProfile,
@@ -540,7 +589,7 @@ const routes = [
     component: HomeWorkPreview,
   },
   {
-    path: "/homework/answers",
+    path: "/homework/review/answers",
     exact: true,
     name: "HomeWorkAnswer",
     component: HomeWorkAnswer,
@@ -576,7 +625,7 @@ const routes = [
     component: QuizReview,
   },
   {
-    path: '/teacher/not-available',
+    path: "/teacher/not-available",
     exact: true,
     name: "CalendarView",
     component: CalendarView,
@@ -584,57 +633,197 @@ const routes = [
   {
     path: "/teacher/application/form",
     exact: true,
-    name: "TeacherApplicationForm",
-    component: TeacherApplicationForm,
+    name: "TeacherApplication",
+    component: TeacherApplication,
   },
   {
-    path: '/not-available/time',
+    path: "/teacher/application",
+    exact: true,
+    name: "TeacherApplicationForAdmin",
+    component: TeacherApplicationForAdmin,
+  },
+
+  {
+    path: "/not-available/time",
     exact: true,
     name: "TeacherAvailable",
     component: TeacherAvailable,
   },
   {
-    path: '/class/student/list/:id',
+    path: "/class/student/list/:id",
     exact: true,
     name: "EachClassStudentList",
     component: EachClassStudentList,
   },
   {
-    path: '/completed/course/list',
-    exact: true,
-    name: "CompletedCourseList",
-    component: CompletedCourseList,
-  },
-  {
-    path: '/course/history',
+    path: "/course/history",
     exact: true,
     name: "CourseHistory",
     component: CourseHistory,
   },
   {
-    path: '/student/transcript/:id',
+    path: "/student/transcript/:id",
     exact: true,
     name: "StudentTranscript",
     component: StudentTranscript,
   },
   {
-    path: '/upcoming/schedule/list/:id',
+    path: "/upcoming/schedule/list/:id",
     exact: true,
     name: "AdminStudentUpcomingScheduleList",
     component: AdminStudentUpcomingScheduleList,
   },
   {
-    path: '/quiz/edit',
+    path: "/quiz/edit",
     exact: true,
-    name: "EditQuiz",
-    component: EditQuiz,
+    name: "EditQuizIntegration",
+    component: EditQuizIntegration,
   },
   {
-    path: '/homework/edit',
+    path: "/homework/edit",
     exact: true,
-    name: "EditHomeWork",
-    component: EditHomeWork,
-  }
+    name: "EditHomeWorkIntegration",
+    component: EditHomeWorkIntegration,
+  },
+  {
+    path: "/student/public/profile",
+    exact: true,
+    name: "StudentPublicProfile",
+    component: StudentPublicProfile,
+  },
+  {
+    path: "/parent/public/profile",
+    exact: true,
+    name: "ParentPublicProfile",
+    component: ParentPublicProfile,
+  },
+  {
+    path: "/quiz/reviewed/edit",
+    exact: true,
+    name: "EditReviewedQuiz",
+    component: EditReviewedQuiz,
+  },
+  {
+    path: "/homework/reviewed/edit",
+    exact: true,
+    name: "EditReviewedHomeWork",
+    component: EditReviewedHomeWork,
+  },
+  {
+    path: "/favourite/course",
+    exact: true,
+    name: "FavouriteCourse",
+    component: FavouriteCourse,
+  },
+  {
+    path: "/calendar/view/upcoming/schedule",
+    exact: true,
+    name: "ScheduleForCalendarFormat",
+    component: ScheduleForCalendarFormat,
+  },
+  {
+    path: "/active/enroll/course/list",
+    exact: true,
+    name: "ActiveEnrollCourseList",
+    component: ActiveEnrollCourseList,
+  },
+  {
+    path: "/completed/course/list",
+    exact: true,
+    name: "CompleteCourseList",
+    component: CompleteCourseList,
+  },
+  {
+    path: "/password/change",
+    exact: true,
+    name: "ChangePassword",
+    component: ChangePassword,
+  },
+  {
+    path: "/homework/create",
+    exact: true,
+    name: "HomeWorkIntegration",
+    component: HomeWorkIntegration,
+  },
+  {
+    path: "/quiz/create",
+    exact: true,
+    name: "QuizIntegration",
+    component: QuizIntegration,
+  },
+  {
+    path: "/homework/review",
+    exact: true,
+    name: "HomeWorkReview",
+    component: HomeWorkReview,
+  },
+  {
+    path: "/forum",
+    exact: true,
+    name: "Forum",
+    component: Forum,
+  },
+  {
+    path: "/forum/details",
+    exact: true,
+    name: "ForumSelect",
+    component: ForumSelect,
+  },
+  {
+    path: "/forum/conversation",
+    exact: true,
+    name: "ForumComments",
+    component: ForumComments,
+  },
+  {
+    path: "/Admin/Forum",
+    exact: true,
+    name: "AdminForum",
+    component: AdminForum,
+  },
+  {
+    path: "/teacher/profile/:id",
+    exact: true,
+    name: "TeacherProfile",
+    component: TeacherProfile,
+  },
+  {
+    path: "/chat/bot/conversation",
+    exact: true,
+    name: "ChatBotConversation",
+    component: ChatBotConversation,
+  },
+  {
+    path: "/faq",
+    exact: true,
+    name: "FAQ",
+    component: FAQ,
+  },
+  {
+    path: "/teacher/payments",
+    exact: true,
+    name: "TeachePayment",
+    component: TeacherPayment,
+  },
+  {
+    path: "/trainers",
+    exact: true,
+    name: "Trainers",
+    component: Trainers,
+  },
+  {
+    path: "/terms-of-use",
+    exact: true,
+    name: "Termsofuse",
+    component: TermsOfUse,
+  },
+  {
+    path: "/privacy-policy",
+    exact: true,
+    name: "PrivacyPolicy",
+    component: PrivacyPolicy,
+  },
+
   // {
   //   path: "/logout",
   //   exact: true,

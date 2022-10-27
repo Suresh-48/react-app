@@ -72,7 +72,7 @@ class LandingPage extends Component {
             />
             <Carousel.Caption>
               <h3>Where Kids Love Learning</h3>
-              <Button variant="success">Start Now</Button>
+              <Button className="Kharpi-save-btn" variant="success">Start Now</Button>
             </Carousel.Caption>
           </Carousel.Item>
         </Carousel>
@@ -99,21 +99,21 @@ class LandingPage extends Component {
 
                       <span className="card-text">(1000)</span>
                     </div>{" "}
-                    <div class="card-div">
+                    <div className="card-div">
                       <span>
-                        <h6 class="card-price"> Price: ${course.offeredPrice}</h6>{" "}
+                        <h6 className="card-price"> Price: ${course.offeredPrice}</h6>{" "}
                         <s className="card-text">${course.price}</s>
                         <Badge pill bg="success">
                           {course.discount}% off
                         </Badge>
                       </span>
                     </div>
-                    {/* <div class="d-flex justify-content-center cart-button">
+                    {/* <div className="d-flex justify-content-center cart-button">
                       <Button variant="primary">Add to Cart</Button>
                     </div> */}
                   </Card.Body>
                   <Card.Footer className="card-footer">
-                    <Button variant="primary" className="cart-button">
+                    <Button variant="primary" className="cart-button Kharpi-save-btn">
                       Add to Cart
                     </Button>
                   </Card.Footer>

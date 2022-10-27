@@ -1,122 +1,61 @@
 import React, { Component } from "react";
-import { Container, Row, Col, Form } from "react-bootstrap";
-import "survey-react/survey.css";
-import * as Survey from "survey-react";
+import { Container, Row, Col } from "react-bootstrap";
+import { Form } from "react-bootstrap";
+import Radio from "@mui/material/Radio";
+import TextField from "@mui/material/TextField";
+import RadioGroup from "@mui/material/RadioGroup";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import FormControl from "@mui/material/FormControl";
+import { Checkbox, FormGroup } from "@mui/material";
 import Button from "@material-ui/core/Button";
-import { Formik } from "formik";
-import { toast } from "react-toastify";
 
-// Image
+// Component
+import Loader from "../core/Loader";
 import HomeWorkImage from "../HomeWork/HomeWorkImage.png";
-
-// Api
-import Api from "../../Api";
-
-//Component
-import Loader from "../../components/core/Loader";
 
 // Icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faTimes,
+  faFileAlt,
+  faDownload,
+} from "@fortawesome/free-solid-svg-icons";
+
+// Styles
+import "../../css/QuizPreview.scss";
 
 class HomeWorkPreview extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      isLoading: true,
       homeworkScheduleId: this.props?.location?.state?.id,
-      homeworkId: this.props?.location?.state?.homeworkId,
       lessonNumber: this.props?.location?.state?.courseLessonId?.lessonNumber,
       lessonName: this.props?.location?.state?.courseLessonId?.lessonName,
       courseName: this.props?.location?.state?.courseId?.name,
-      question: {},
-      questionCount: 0,
+      questionCount: this?.props?.location?.state?.questions?.length,
+      reviewAnswer: this.props?.location?.state?.reviewAnswer,
+      scored: this?.props?.location?.state?.scored,
       role: "",
-      answer: {},
       isSubmit: false,
-      Q1: "",
-      Q2: "",
-      Q3: "",
-      Q4: "",
-      Q5: "",
-      Q6: "",
-      Q7: "",
-      Q8: "",
-      Q9: "",
-      Q10: "",
+      question: this?.props?.location?.state?.questions,
     };
   }
-
-  getAnswer = () => {
-    const { homeworkScheduleId } = this.state;
-    Api.get(`api/v1/homeworkSchedule/schedule/get`, {
-      params: {
-        homeworkScheduleId: homeworkScheduleId,
-      },
-    }).then((response) => {
-      const questions = response.data.getOne.homeworkId.questions;
-      const answer = response.data.getOne.answers;
-      const questionCount = questions.pages[0].elements.length;
-      this.setState({
-        question: questions,
-        answer: answer,
-        isLoading: false,
-        questionCount: questionCount,
-      });
-    });
-  };
 
   componentDidMount() {
     const role = localStorage.getItem("role");
     this.setState({ role: role });
-    this.getAnswer();
   }
 
-  submitForm = (values) => {
-    this.setState({ isSubmit: true });
-    const { homeworkScheduleId } = this.state;
-    const mark = [];
-
-    for (let i = 1; i <= this.state.questionCount; i++) {
-      mark.push({ answer: this.state["Q" + i] });
-    }
-
-    const validate = mark.filter(function (mark) {
-      return mark.answer === "";
-    }).length;
-
-    if (validate === 0) {
-      Api.patch("api/v1/homeworkSchedule/review/mark", {
-        homeworkScheduleId: homeworkScheduleId,
-        remark: values.remark,
-        reviewAnswer: mark,
-      }).then((response) => {
-        this.props.history.goBack();
-        this.setState({ isSubmit: false });
-      });
-    } else {
-      toast.error("Please Ckeck You have Corrected All the Questions ");
-      this.setState({ isSubmit: false });
-    }
-  };
-
-  correct = (index) => {
-    const number = index + 1;
-    const questionNo = "Q" + number;
-    this.setState({ [questionNo]: true });
-  };
-
-  wrong = (index, e) => {
-    const number = index + 1;
-    const questionNo = "Q" + number;
-    this.setState({ [questionNo]: false });
-  };
-
   render() {
-    const { isLoading, question, lessonNumber, courseName, lessonName, role, questionCount } = this.state;
-    const survey = new Survey.Model(question);
-    survey.data = this.state.answer;
-    survey.mode = "display";
+    const {
+      isLoading,
+      lessonNumber,
+      courseName,
+      lessonName,
+      questionCount,
+      reviewStatus,
+    } = this.state;
 
     return (
       <div>
@@ -125,122 +64,198 @@ class HomeWorkPreview extends Component {
         ) : (
           <Container>
             <Row>
-              <Col xs={12} sm={5} className="d-flex justiy-content-center align-items-center">
-                <img src={HomeWorkImage} alt="Snow" width={"17%"} height={"100%"} />
+              <Col
+                xs={12}
+                sm={5}
+                className="d-flex justiy-content-center align-items-center"
+              >
+                <img
+                  src={HomeWorkImage}
+                  alt="Snow"
+                  width={"18%"}
+                  height={"80%"}
+                />
                 <div>
                   <p className="mb-0 welcome-text">Welcome</p>
-                  <h6>{`${"HomeWork   for Lesson" + lessonNumber}`}</h6>
+                  <h6>{`${"HomeWork for Lesson" + lessonNumber}`}</h6>
                 </div>
               </Col>
               <Col xs={12} sm={7} className="quiz-heading ">
-                <p className="coursename-text mb-0">{`${courseName + "-" + lessonName}`}</p>
+                <p className="coursename-text mb-0">{`${
+                  courseName + "-" + lessonName
+                }`}</p>
               </Col>
             </Row>
             <hr className="heading-bottom" />
-            {role === "teacher" ? (
-              <Row>
-                <Col sm={8} md={8}>
-                  <div>
-                    <Survey.Survey model={survey} />
-                  </div>
-                </Col>
-                <Col sm={4} md={4}>
-                  <div className="col-sm-12">
-                    <Formik
-                      enableReinitialize={true}
-                      initialValues={{
-                        remark: "",
-                      }}
-                      onSubmit={(values) => this.submitForm(values)}
-                    >
-                      {(formik) => {
-                        const { handleSubmit, isValid } = formik;
-                        return (
-                          <Row>
-                            <Form onSubmit={handleSubmit}>
-                              <Row>
-                                <div>
-                                  <table class="table table-bordered">
-                                    <thead>
-                                      <tr>
-                                        <th style={{ marginLeft: "30px" }}>Questions</th>
-                                        <th>Options</th>
-                                        <th>Marks</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {[...Array(questionCount)].map((list, index) => (
-                                        <tr>
-                                          <div className="d-flex justify-content-center ">Q-{index + 1}</div>
-                                          <td style={{ textAlign: "center" }}>
-                                            <div className="row" key={index}>
-                                              <Col>
-                                                <FontAwesomeIcon
-                                                  icon={faCheck}
-                                                  size="md"
-                                                  color="green"
-                                                  className="position-relative"
-                                                  onClick={(list) => this.correct(index)}
-                                                />
-                                              </Col>
-                                              <Col>
-                                                <FontAwesomeIcon
-                                                  icon={faTimes}
-                                                  size="md"
-                                                  color="#cf2b2be8"
-                                                  className="position-relative"
-                                                  onClick={(list) => this.wrong(index)}
-                                                />
-                                              </Col>
-                                            </div>
-                                          </td>
-                                          <td>
-                                            <div className="d-flex justify-content-center ">
-                                              {this.state["Q" + (index + 1)] === "" ? (
-                                                <div></div>
-                                              ) : this.state["Q" + (index + 1)] === true ? (
-                                                <FontAwesomeIcon
-                                                  icon={faCheck}
-                                                  size="md"
-                                                  color="green"
-                                                  className="mx-1"
-                                                />
-                                              ) : (
-                                                <FontAwesomeIcon icon={faTimes} size="md" color="#cf2b2be8" />
-                                              )}
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                                <div className="d-flex justify-content-end align-items-center mb-4  ">
-                                  <Button
-                                    type="submit"
-                                    disabled={!isValid || this.state.isSubmit}
-                                    fullWidth
-                                    variant="contained"
-                                    color="primary"
-                                    style={{ width: "40%" }}
-                                  >
-                                    Submit
-                                  </Button>
-                                </div>
-                              </Row>
-                            </Form>
-                          </Row>
-                        );
-                      }}
-                    </Formik>
-                  </div>
-                </Col>
-              </Row>
-            ) : (
+            <div>
               <div>
-                <Survey.Survey model={survey} />
-              </div>
-            )}
+                {this.state.question.map((list, index) => (
+                  <div className="px-2">
+                    <div className="d-flex" key={index}>
+                      <TextField
+                        fullWidth
+                        id="standard-basic"
+                        variant="standard"
+                        name="no"
+                        disabled
+                        value={`${index + 1 + "."}`}
+                        className="mt-4"
+                        style={{ width: "3%" }}
+                      />
+                      <TextField
+                        fullWidth
+                        className="mt-4"
+                        multiline
+                        name="question"
+                        id="standard-basic"
+                        disabled
+                        value={list.question}
+                        variant="standard"
+                      />
+                    </div>
+                    {list.type === "text" && (
+                      <Form>
+                        <Form.Group
+                          className="mb-2 mx-4 my-4"
+                          controlId="exampleForm.ControlTextarea1"
+                        >
+                          <Form.Control
+                            as="textarea"
+                            disabled
+                            value={list?.answer}
+                            rows={3}
+                          />
+                        </Form.Group>
+                      </Form>
+                    )}
+                    {list.type === "radio" && (
+                      <div className="option-list mt-3">
+                        <FormControl>
+                          <RadioGroup
+                            aria-labelledby="demo-radio-buttons-group-label"
+                            value={list?.answer}
+                            disabled
+                            name="radio-buttons-group"
+                          >
+                            <FormControlLabel
+                              className="mb-2"
+                              value={list.option1}
+                              control={<Radio />}
+                              label={list.option1}
+                            />
+                            <FormControlLabel
+                              className="mb-2"
+                              value={list.option2}
+                              control={<Radio />}
+                              label={list.option2}
+                            />
+                            <FormControlLabel
+                              className="mb-2"
+                              value={list.option3}
+                              control={<Radio />}
+                              label={list.option3}
+                            />
+                            <FormControlLabel
+                              className="mb-2"
+                              value={list.option4}
+                              control={<Radio />}
+                              label={list.option4}
+                            />
+                          </RadioGroup>
+                        </FormControl>
+                      </div>
+                    )}
+                     {list.type === "checkbox" && 
+                      <div className="option-list mt-3">
+                        <FormControl >
+                      <FormGroup disabled >
+                        <FormControlLabel
+                         className="mb-2"
+                         value={list.option1}
+                          control={
+                            <Checkbox
+                              checked={list.answer.checkBox1}
+                               name="checkBox1"
+                            />
+                          }
+                          label={list.checkBox1}
+                        />
+                        <FormControlLabel
+                         className="mb-2"
+                         value={list.option2}
+                          control={
+                            <Checkbox
+                              checked={list.answer.checkBox2}
+                              name="checkBox2"
+                            />
+                          }
+                          label={list.checkBox2}
+                        />
+                         <FormControlLabel
+                         value={list.option3}
+                          className="mb-2"
+                          control={
+                            <Checkbox
+                              checked={list.answer.checkBox3}
+                              name="checkBox3"
+                            />
+                          }
+                          label={list.checkBox3}
+                        />
+                        <FormControlLabel
+                        value={list.option4}
+                         className="mb-2"
+                          control={
+                            <Checkbox
+                              checked={list.answer.checkBox4}
+                              name="checkBox4"
+                            />
+                          }
+                          label={list.checkBox4}
+                        />
+                      </FormGroup>
+                    </FormControl>
+                      </div>
+                      } 
+                    {list.type === "fileUpload" &&
+                      (list.answer ? (
+                        <div className="mt-3 px-1">
+                          <div className="d-flex justify-content-start align-items-center mb-3 ps-3 file-upload-answer">
+                            <FontAwesomeIcon
+                              icon={faFileAlt}
+                              size="2x"
+                              color="gray"
+                              className="me-2"
+                            />
+                            <p className="mb-0">{list.answer}</p>
+                          </div>
+                          <div className="d-flex justify-content-start mx-5">
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              rel="noopener noreferrer"
+                              target="_blank"
+                              onClick={() => window.open(list.answer, "_blank")}
+                            >
+                              <FontAwesomeIcon
+                                icon={faDownload}
+                                size="1x"
+                                color="primary"
+                                className="me-2"
+                              />
+                              Download
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="my-3 ps-5">
+                          <h6>Not Answered</h6>
+                        </div>
+                      ))}
+                  </div>
+                ))}
+              </div>{" "}
+            </div>
           </Container>
         )}
       </div>

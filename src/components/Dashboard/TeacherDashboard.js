@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Container, Row, Table, Button, Modal, Col } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import { toast } from "react-toastify";
 import moment from "moment";
+
+import TeacherApplication from "../TeacherApplication";
 
 // Styles
 import DashboardTiles from "../../components/core/DashboardTiles";
@@ -16,6 +18,7 @@ import "../../css/TeacherDashboard.scss";
 //icon
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCopy } from "@fortawesome/free-solid-svg-icons";
+import DisplayTeacherApplication from "../TeacherApplication/displayTeacherApplication";
 
 function TeacherDashboard() {
   const [data, setData] = useState([]);
@@ -29,6 +32,12 @@ function TeacherDashboard() {
   const [showAlert, setshowAlert] = useState(false);
   const [show, setshow] = useState(false);
   const [isTeacher, setIsTeacher] = useState(false);
+  const [status, setStatus] = useState("");
+  const [courseScheduleId, setCourseScheduleId] = useState("");
+  const [zoomStartTimeGet, setZoomStartTimeGet] = useState("");
+  const [sessionEndModal, setSessionEndModal] = useState(false);
+  const token = localStorage.getItem("sessionId");
+  const history = useHistory();
 
   function closeShow() {
     setshowAlert(false);
@@ -36,11 +45,17 @@ function TeacherDashboard() {
 
   useEffect(() => {
     const teacherId = localStorage.getItem("teacherId");
+    Api.get(`api/v1/teacher/${teacherId}`).then((response) => {
+      const teacherStatus = response?.data?.data?.getOne?.status;
+      setStatus(teacherStatus);
+      setisLoading(false);
+    }, []);
+
     TeacherUpcomingScheduleData(teacherId);
     getTeacherCourseCount(teacherId);
-    const currentDate = moment().format();
-    const date = moment(currentDate).utc().format("ll");
-    var lessTime = moment(currentDate).format("LT");
+    const currentDate = moment().tz("America/Chicago").format();
+    const date = moment(currentDate).tz("America/Chicago").format("ll");
+    var lessTime = moment(currentDate).tz("America/Chicago").format("HH:mm");
     setCurrentDate(date);
     setLessTime(lessTime);
     setTeacherId(teacherId);
@@ -64,7 +79,7 @@ function TeacherDashboard() {
       setUpcomingData(dataValues);
       const orginalTime = response.data.upcomingList;
       orginalTime.forEach(function (list) {
-        const time = moment(list.courseScheduleId.startTime, "LT").subtract(15, "minutes").format("LT");
+        const time = moment(list.courseScheduleId.startTime, "LT").subtract(15, "minutes").format("HH:mm");
         list.courseScheduleId["zoomTime"] = time;
       });
       setisLoading(false);
@@ -85,10 +100,59 @@ function TeacherDashboard() {
   const handleModal = () => {
     setshow(false);
   };
+  const newDate = new Date();
+
+  const zoomTiming = (e) => {
+    const teacherId = localStorage.getItem("teacherId");
+    const newDate = new Date();
+    const sessionTiming = newDate.toLocaleTimeString();
+    // const date = newDate.toLocaleDateString();
+    const date = newDate.getDate() + "-" + (newDate.getMonth() + 1) + "-" + newDate.getFullYear();
+
+    const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const day = weekday[newDate.getDay()];
+    Api.patch("/api/v1/teacherUpcomingSchedule/zoom/timing", {
+      teacherUpcomingScheduleId: courseScheduleId.id,
+      courseName: courseScheduleId.courseId.aliasName,
+      lessonName: courseScheduleId.courseLessonId.lessonName,
+      teacherPayableAmount: courseScheduleId.teacherId.teacherSessionAmount,
+      zoomStartTime: e === "open" ? sessionTiming : zoomStartTimeGet,
+      zoomEndTime: e === "close" ? sessionTiming : "",
+      date: date,
+      teacherId: teacherId,
+    }).then((res) => {
+      const ZoomstartTime = res.data.zoomDetails.zoomStartTime;
+      setZoomStartTimeGet(ZoomstartTime);
+    });
+  };
+
+  // Log out
+  const logout = () => {
+    setTimeout(() => {
+      localStorage.clear(history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
+
+  const showModal = () => {
+    setSessionEndModal(false);
+    setTimeout(() => {
+      setSessionEndModal(true);
+    }, 1000);
+  };
+  // const showModal = () => {
+  //   setSessionEndModal(false);
+  //   setTimeout(() => {
+  //     setSessionEndModal(true);
+  //   }, 1000);   600000
+  // };
+
   return (
     <div>
       {isLoading ? (
         <Loader />
+      ) : status === "Pending" ? (
+        <DisplayTeacherApplication />
       ) : (
         <Container>
           <Row>
@@ -96,12 +160,11 @@ function TeacherDashboard() {
             <DashboardTiles label="Pending Payment" count={0} url="#" />
             <DashboardTiles label="Received Payment" count={0} url="#" />
           </Row>
-          <Row className="teacherdash-two">
-            <div className="d-flex justify-content-center align-items-center">
-              <h4>Upcoming Schedule List</h4>
+          <Row className="mt-5 " style={{ minHeight: "227px" }}>
+            <div>
+              <h4>Upcoming Schedule </h4>
             </div>
-
-            <Table striped bordered hover className="teacher-table">
+            <Table striped bordered hover responsive>
               <thead>
                 <tr className="viewRow">
                   <th>S.No</th>
@@ -122,10 +185,14 @@ function TeacherDashboard() {
                       <td>{list?.lessonDate}</td>
                       <td>{list?.courseScheduleId?.startTime}</td>
                       <td>{list?.courseScheduleId?.endTime}</td>
-                      <td>{list?.courseId?.name}</td>
+                      <td className="linkColor">{list?.courseId?.name}</td>
                       <td>{list?.courseLessonId?.lessonName}</td>
                       <td>{list?.courseId?.duration + "hour"}</td>
                       <td>
+                        {console.log("list.lessonDate...", list.lessonDate)}
+                        {console.log("CurrentDate...", CurrentDate)}
+                        {console.log("list.courseScheduleId.zoomTime...", list.courseScheduleId.zoomTime)}
+                        {console.log("llessTime...", lessTime)}
                         <p
                           className={`${
                             list.lessonDate === CurrentDate && list.courseScheduleId.zoomTime <= lessTime
@@ -133,10 +200,11 @@ function TeacherDashboard() {
                               : "zoom-view-disable-style"
                           }`}
                           onClick={() => {
+                            setCourseScheduleId(list);
                             if (list.lessonDate === CurrentDate && list.courseScheduleId.zoomTime <= lessTime) {
                               setshow(true);
                               setIsTeacher(true);
-                              setZoomLink(list?.courseScheduleId);
+                              setZoomLink(list?.courseLessonId);
                             } else {
                               setshowAlert(true);
                               setDateAndTime(list);
@@ -150,7 +218,7 @@ function TeacherDashboard() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8">
+                    <td colSpan="8" className="colspan-data-alignment">
                       <h6 className="d-flex justify-content-center">No Records to Display</h6>
                     </td>
                   </tr>
@@ -175,57 +243,88 @@ function TeacherDashboard() {
 
           {isTeacher ? (
             <div>
-              <Modal show={show} centered onHide={() => handleModal()}>
-                <Modal.Body id="contained-modal-title-vcenter">
+              <Modal show={show} centered backdrop="static">
+                <Modal.Header className="border-bottom-0 pb-0" />
+                <Modal.Body id="contained-modal-title-vcenter" className="zoom-modal-popup pt-0">
                   <div className="align-items-center zoom-content">
-                    <h4 className="mt-2">Zoom Link</h4>
-                    <Row className="my-3 zoom-modal-style">
-                      <h6 className="d-block">Link</h6>
-                      <Col sm={10} className="copy-content">
-                        <Link
-                          className="link-text"
-                          rel="noopener noreferrer"
-                          target="_blank"
-                          onClick={() => window.open(`${ZoomLink?.zoomId}+${ZoomLink?.zoomPassword}`, "_blank")}
-                        >
-                          {ZoomLink?.zoomId}
-                        </Link>
-                      </Col>
-                      <Col sm={2} className="d-flex justify-content-center align-items-center">
-                        <div>
-                          <CopyToClipboard
-                            text={ZoomLink?.zoomId}
-                            className="mx-1 copy-icon"
-                            onCopy={() => toast.success("Link Copied...")}
-                          >
-                            <FontAwesomeIcon icon={faCopy} size="lg" color="#397ad4" />
-                          </CopyToClipboard>
-                        </div>
-                      </Col>
-                    </Row>
-                    <Row className="mb-3 zoom-modal-style">
-                      <h6 className="d-block">Password</h6>
-                      <br />
-                      <Col sm={10} className="copy-content">
-                        <Link className="link-text text-decoration-none" style={{ fontSize: 14 }}>
-                          {ZoomLink?.zoomPassword}
-                        </Link>
-                      </Col>
-                      <Col sm={2} className="d-flex justify-content-center align-items-center">
-                        <div>
-                          <CopyToClipboard
-                            text={ZoomLink?.zoomPassword}
-                            className="mx-1 copy-icon"
-                            onCopy={() => toast.success("Password Copied...")}
-                          >
-                            <FontAwesomeIcon icon={faCopy} size="lg" color="#397ad4" />
-                          </CopyToClipboard>
-                        </div>
-                      </Col>
-                    </Row>
+                    <h4 className="mt-2">Are you sure to start the session...!</h4>
+                    <Col className=" mt-4 ">
+                      <Button variant="outline-secondary px-4 me-2" onClick={() => handleModal()}>
+                        NO
+                      </Button>
+                      <Button
+                        variant="info"
+                        className="px-4"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        onClick={() => {
+                          zoomTiming("open");
+                          setshow(false);
+                          showModal();
+                          window.open(`${ZoomLink?.zoomId}+${ZoomLink?.zoomPassword}`, "_blank");
+                        }}
+                      >
+                        YES
+                      </Button>
+                    </Col>
                   </div>
                 </Modal.Body>
               </Modal>
+              <Modal show={sessionEndModal} centered backdrop="static" className="p-3">
+                <Modal.Header className="border-bottom-0 pb-0" />
+
+                <Modal.Body>
+                  <h4 className="mt-2 text-center">Session has ended...!</h4>
+
+                  <Col className="d-flex justify-content-center mt-4 mb-2">
+                    <Button
+                      variant="outline-secondary"
+                      className=" me-2"
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      onClick={() => {
+                        zoomTiming("open");
+                        setshow(false);
+                        showModal();
+                        window.open(`${ZoomLink?.zoomId}+${ZoomLink?.zoomPassword}`, "_blank");
+                      }}
+                    >
+                      ReStart Session
+                    </Button>
+                    <Button
+                      variant="contained"
+                      className="create-active"
+                      onClick={() => {
+                        zoomTiming("close");
+                        setSessionEndModal(false);
+                      }}
+                    >
+                      End Session
+                    </Button>
+                  </Col>
+                </Modal.Body>
+              </Modal>
+              {/* <Modal show={sessionEndModal} centered backdrop="static">
+                <Modal.Header className="border-bottom-0 pb-0" />
+                <Modal.Body id="contained-modal-title-vcenter" className="zoom-modal-popup pt-0">
+                  <div className="align-items-center zoom-content">
+                    <h4 className="mt-2">Session has ended...!</h4>
+                    <Col className="d-flex justify-content-flex-end">
+                      <Button className="create-active me-2"> ReStart Session</Button>
+                      <Button
+                        variant="contained"
+                        className="create-active  "
+                        onClick={() => {
+                          zoomTiming("close");
+                          setSessionEndModal(false);
+                        }}
+                      >
+                        End Session
+                      </Button>
+                    </Col>
+                  </div>
+                </Modal.Body>
+              </Modal> */}
             </div>
           ) : null}
           <Modal show={showAlert} centered className="modal-main-content" onHide={() => closeShow()}>
@@ -239,7 +338,7 @@ function TeacherDashboard() {
                 </div>
                 <Row>
                   <Col>
-                    <Button className="delete-cancel" variant="light" onClick={() => closeShow()}>
+                    <Button className="delete-cancel Kharpi-save-btn" variant="light" onClick={() => closeShow()}>
                       OK
                     </Button>
                   </Col>

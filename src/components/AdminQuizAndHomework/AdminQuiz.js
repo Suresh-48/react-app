@@ -90,7 +90,7 @@ export default class AdminQuiz extends Component {
 
     return (
       <div>
-        <div className="main">
+        <div >
           <Survey.Survey
             model={survey}
             onComplete={(data) => this.onCompleteComponent(data)}

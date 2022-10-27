@@ -8,11 +8,14 @@ import Select from "react-select";
 import { toast } from "react-toastify";
 import Button from "@material-ui/core/Button";
 import moment from "moment";
+import { MuiPickersUtilsProvider, KeyboardDatePicker } from "@material-ui/pickers";
 
 // Api
 import Api from "../../Api";
 
+// Style
 import "../../css/ParentSignup.scss";
+
 // Icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPen } from "@fortawesome/free-solid-svg-icons";
@@ -23,11 +26,11 @@ import DateFnsUtils from "@date-io/date-fns";
 import Label from "../../components/core/Label";
 import Loader from "../../components/core/Loader";
 import states from "../../components/core/States";
-
-import { MuiPickersUtilsProvider, KeyboardDatePicker } from "@material-ui/pickers";
+import profile from "../core/NoProfile.png";
+import { customStyles } from "../core/Selector";
 
 // Validations
-const SignInSchema = Yup.object().shape({
+const EmailSignInSchema = Yup.object().shape({
   firstName: Yup.string()
     .matches(/^[A-Z]/, "First Letter Must Be Capital")
     .matches(/^[aA-zZ\s]+$/, "Enter Valid Name")
@@ -47,6 +50,8 @@ const SignInSchema = Yup.object().shape({
 
   phoneNumber: Yup.string()
     .matches(/^[0-9\s]+$/, "Enter Valid Phone Number")
+    .min(10, "Enter Valid number")
+    .max(10, "Enter Valid number")
     .nullable(),
 
   zipCode: Yup.string()
@@ -57,14 +62,16 @@ const SignInSchema = Yup.object().shape({
     )
     .matches(/^[0-9]{5}$/, "Zip Code Must Be 5 Digits"),
 
-  email: Yup.string().email("Enter Valid Email").required("Email Is Required"),
+  email: Yup.string()
+    .email("Enter Valid Email")
+    .required("Email Is Required"),
 
   dob: Yup.string().required("Date Of Birth Is Required"),
 
   password: Yup.string()
     .matches(
       "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&])",
-      "Password Should Be Mix Of Letters, Numbers, Special Character (!@#$%^&)"
+      "Password Should contain Uppercase, Lowercase, Numbers and Special Characters"
     )
     .min(8, "Password Required Minimum 8 characters")
     .required("Password Is Required"),
@@ -73,9 +80,48 @@ const SignInSchema = Yup.object().shape({
     .oneOf([Yup.ref("password"), null], "Passwords must match")
     .matches(
       "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&])",
-      "Password Should Be Mix Of Letters, Numbers, Special Character (!@#$%^&)"
+      "Confirm Password Should contain Uppercase, Lowercase, Numbers and Special Characters"
     )
     .required("Confirm Password Is Required"),
+});
+
+const GoogleAndFacebookSignInSchema = Yup.object().shape({
+  firstName: Yup.string()
+    .matches(/^[A-Z]/, "First Letter Must Be Capital")
+    .matches(/^[aA-zZ\s]+$/, "Enter Valid Name")
+    .required("First Name Is Required"),
+
+  middleName: Yup.string()
+    .matches(/^[aA-zZ\s]+$/, "Enter Valid Name")
+    .matches(/^[A-Z]/, "First Letter Must Be Capital")
+    .nullable(),
+
+  lastName: Yup.string()
+    .matches(/^[A-Z]/, "First Letter Must Be Capital")
+    .matches(/^[aA-zZ\s]+$/, "Enter Valid Name")
+    .required("Last Name Is Required"),
+
+  gender: Yup.object().required("Gender Is Required"),
+
+  phoneNumber: Yup.string()
+    .matches(/^[0-9\s]+$/, "Enter Valid Phone Number")
+    .min(10, "Enter valid phone number")
+    .max(10, "Enter valid phone number")
+    .nullable(),
+
+  zipCode: Yup.string()
+    .nullable()
+    .matches(
+      /^((\\+[1-9]{1,4}[ \\-]*)|(\\([0-9]{2,3}\\)[ \\-]*)|([0-9]{2,4})[ \\-]*)*?[0-9]{0,4}?[ \\-]*[0-9]{0,4}?$/,
+      "Enter Valid Zip Code"
+    )
+    .matches(/^[0-9]{5}$/, "Zip Code Must Be 5 Digits"),
+
+  email: Yup.string()
+    .email("Enter Valid Email")
+    .required("Email Is Required"),
+
+  dob: Yup.string().required("Date Of Birth Is Required"),
 });
 
 const options = [
@@ -113,9 +159,18 @@ class EditStudentDetails extends Component {
       passwordShown: false,
       confirmPasswordShown: false,
       isSubmit: false,
+      aliasName: this.props?.location?.state?.aliasName,
     };
     this.inputReference = React.createRef();
   }
+
+  //logout
+  logout = () => {
+    setTimeout(() => {
+      localStorage.clear(this.props.history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
 
   togglePasswordVisibility = () => {
     this.setState({ passwordShown: !this.state.passwordShown });
@@ -131,11 +186,14 @@ class EditStudentDetails extends Component {
     const file = e.target.files[0];
     const type = file?.type?.split("/")[0];
     const base64 = await this.convertBase64(file);
+    const token = localStorage.getItem("sessionId");
+    console.log("token  student edit", token);
     this.setState({ imagePreview: base64, imageType: type });
     if (type === "image") {
       Api.post("api/v1/student/profile/upload", {
         studentId: this.state.studentId,
         image: this.state.imagePreview,
+        token: token,
       })
         .then((response) => {
           const status = response.status;
@@ -153,6 +211,12 @@ class EditStudentDetails extends Component {
             }
             toast.error(error.response.data.message);
           }
+
+          const errorStatus = error?.response?.status;
+          if (errorStatus === 401) {
+            this.logout();
+            toast.error("Session Timeout");
+          }
         });
     } else {
       toast.error("Image Only Accept");
@@ -161,13 +225,23 @@ class EditStudentDetails extends Component {
 
   // Delete Image
   removeImage = () => {
+    const token = localStorage.getItem("sessionId");
     Api.delete("api/v1/student/remove/profile", {
       params: {
         studentId: this.state.studentId,
+        token: token,
       },
-    }).then((response) => {
-      this.studentDetails();
-    });
+    })
+      .then((response) => {
+        this.studentDetails();
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
+      });
     this.setState({ imagePreview: "" });
   };
 
@@ -187,31 +261,41 @@ class EditStudentDetails extends Component {
 
   // Parent details get
   studentDetails = () => {
-    Api.get(`api/v1/student/${this.state.studentId}`).then((res) => {
-      const data = res.data.data.getOne;
-      this.setState({
-        details: data,
-        isLoading: false,
-        firstName: data?.firstName,
-        middleName: data?.middleName,
-        lastName: data?.lastName,
-        address1: data?.address1,
-        address2: data?.address2,
-        phone: data?.phone,
-        email: data?.email,
-        dob: data?.dob,
-        password: data?.password,
-        confirmPassword: data?.confirmPassword,
-        imagePreview: data?.imageUrl,
-        genderValue: data?.gender,
-        gender: data?.gender ? { value: data?.gender, label: data?.gender } : "",
-        zipCode: data?.zipCode,
-        city: data?.city ? { value: data?.city, label: data?.city } : "",
-        cityValue: data?.city,
-        state: data?.state ? { value: data?.state, label: data?.state } : "",
-        stateValue: data?.state,
+    const token = localStorage.getItem("sessionId");
+    console.log("token student get", token);
+    Api.get(`/api/v1/student/${this.state.studentId}`, { headers: { token: token } })
+      .then((res) => {
+        const data = res.data.data.getOne;
+        this.setState({
+          details: data,
+          isLoading: false,
+          firstName: data?.firstName,
+          middleName: data?.middleName,
+          lastName: data?.lastName,
+          address1: data?.address1,
+          address2: data?.address2,
+          phone: data?.phone,
+          email: data?.email,
+          dob: data?.dob ? data?.dob : "",
+          password: data?.password,
+          confirmPassword: data?.confirmPassword,
+          imagePreview: data?.imageUrl,
+          genderValue: data?.gender,
+          gender: data?.gender ? { value: data?.gender, label: data?.gender } : "",
+          zipCode: data?.zipCode,
+          city: data?.city ? { value: data?.city, label: data?.city } : "",
+          cityValue: data?.city,
+          state: data?.state ? { value: data?.state, label: data?.state } : "",
+          stateValue: data?.state,
+        });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
       });
-    });
   };
 
   componentDidMount() {
@@ -221,31 +305,44 @@ class EditStudentDetails extends Component {
   // Submit Details
   submitForm = (values) => {
     this.setState({ isSubmit: true });
-    const email = this.state.email.toLowerCase();
+    const email = values.email.toLowerCase();
     const startDate = this.state.dob;
+    const gender = values.gender.value ? values.gender.value : "";
+    const City = values.city.value ? values.city.value : "";
+    const state = values.state.value ? values.state.value : "";
     const dateValue = moment(startDate).format("ll");
+    const token = localStorage.getItem("sessionId");
     Api.patch(`api/v1/student/${this.state.studentId}`, {
-      firstName: this.state.firstName,
-      lastName: this.state.lastName,
-      middleName: this.state.middleName,
+      firstName: values.firstName,
+      lastName: values.lastName,
+      middleName: values.middleName ? values.middleName : "",
       dob: dateValue,
-      gender: this.state.genderValue,
-      phone: this.state.phone,
+      gender: gender,
+      phone: values.phone ? values.phone : "",
       email: email,
-      address1: this.state.address1,
-      address2: this.state.address2,
-      city: this.state.cityValue,
-      state: this.state.stateValue,
-      zipCode: this.state.zipCode,
-      password: this.state.password,
-      confirmPassword: this.state.confirmPassword,
+      address1: values.address1 ? values.address1 : "",
+      address2: values.address2 ? values.address2 : "",
+      city: City,
+      state: state,
+      zipCode: values.zipCode ? values.zipCode : "",
+      password: values.password,
+      confirmPassword: values.confirmPassword,
+      loginType: this.state.details.loginType,
+      token: token,
     })
       .then((response) => {
         const status = response.status;
         if (status === 201) {
           this.setState({ isSubmit: false });
           toast.success("Updated");
-          this.studentDetails();
+          if (this.state.aliasName) {
+            this.props.history.push(`/course/detail/${this.state.aliasName}`);
+          } else {
+            // this.props.history.push("/dashboard");
+            this.studentDetails();
+            this.props.history.push({ state: { sidebar: true } });
+          }
+          // window.location.reload();
         }
       })
       .catch((error) => {
@@ -256,6 +353,12 @@ class EditStudentDetails extends Component {
             errorMessage = JSON.parse(errorRequest.response).message;
           }
           toast.error(error.response.data.message);
+        }
+
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
         }
       });
   };
@@ -269,10 +372,10 @@ class EditStudentDetails extends Component {
     let year = getAge.getUTCFullYear();
     let age = Math.abs(year - 1970);
 
-    if (age <= 17) {
+    if (age >= 5 && age <= 18) {
       this.setState({ dob: dateValue });
     } else {
-      toast.warning("Your Age Must Be Under 17");
+      toast.warning("Your Age Must Be at least 5 years to at most 18 years");
       this.setState({ dob: null });
     }
   };
@@ -305,8 +408,8 @@ class EditStudentDetails extends Component {
           {isLoading ? (
             <Loader />
           ) : (
-            <Container className="mt-5 pt-1">
-              <Row className="mt-4 py-4">
+            <Container className="p-3">
+              <Row className=" py-0 profile-dropdown-status">
                 <Formik
                   enableReinitialize={true}
                   initialValues={{
@@ -325,7 +428,9 @@ class EditStudentDetails extends Component {
                     password: this.state.password,
                     confirmPassword: this.state.confirmPassword,
                   }}
-                  validationSchema={SignInSchema}
+                  validationSchema={
+                    this.state.details.logininType === "Email" ? EmailSignInSchema : GoogleAndFacebookSignInSchema
+                  }
                   onSubmit={(values) => this.submitForm(values)}
                 >
                   {(formik) => {
@@ -334,7 +439,14 @@ class EditStudentDetails extends Component {
                       <div>
                         <Form onSubmit={handleSubmit}>
                           <Row>
-                            <Col sm={4} xs={12} className="px-4">
+                            <Col
+                              sm={12}
+                              xs={12}
+                              md={12}
+                              lg={4}
+                              className="d-flex justify-content-center px-4 pt-2"
+                              style={{ backgroundColor: "#0000000a" }}
+                            >
                               <Dropdown className="dropdown-profile-list">
                                 <Dropdown.Toggle className="teacher-menu-dropdown p-0" varient="link">
                                   <div>
@@ -342,17 +454,18 @@ class EditStudentDetails extends Component {
                                       {this.state.imagePreview ? (
                                         <Avatar
                                           src={this.state.imagePreview}
-                                          size="150"
+                                          size="220"
                                           round={true}
                                           color="silver"
                                           className="image-size"
                                         />
                                       ) : (
                                         <Avatar
-                                          name={`${this.state.firstName} ${this.state.lastName}`}
-                                          size="150"
+                                          src={profile}
+                                          size="220"
                                           round={true}
                                           color="silver"
+                                          className="image-size"
                                         />
                                       )}
                                     </div>
@@ -362,7 +475,7 @@ class EditStudentDetails extends Component {
                                     </div>
                                   </div>
                                 </Dropdown.Toggle>
-                                <Dropdown.Menu center className="profile-dropdown-status py-0">
+                                <Dropdown.Menu center className="profile-dropdown-status  ms-4 py-0">
                                   <Dropdown.Item className="status-list">
                                     <Link
                                       to="#"
@@ -396,54 +509,60 @@ class EditStudentDetails extends Component {
                                 style={{ display: "none" }}
                                 onChange={(e) => this.fileUploadInputChange(e)}
                               />
-                              <Form.Group className="form-row mb-3">
-                                <Label notify={true}>First Name</Label>
-                                <br />
-                                <FormControl
-                                  type="type"
-                                  name="firstName"
-                                  placeholder="First Name"
-                                  id="firstName"
-                                  value={this.state.firstName}
-                                  onChange={(e) => this.setState({ firstName: e.target.value })}
-                                  onBlur={handleBlur}
-                                  className="form-width"
-                                />
-                                <ErrorMessage name="firstName" component="span" className="error text-danger" />
-                              </Form.Group>
-                              <Form.Group className="form-row mb-3">
-                                <Label>Middle Name</Label>
-                                <br />
-                                <FormControl
-                                  type="type"
-                                  name="middleName"
-                                  placeholder="Middle Name"
-                                  id="middleName"
-                                  value={this.state.middleName}
-                                  onChange={(e) => this.setState({ middleName: e.target.value })}
-                                  onBlur={handleBlur}
-                                  className="form-width"
-                                />
-                                <ErrorMessage name="middleName" component="span" className="error text-danger" />
-                              </Form.Group>
-                              <Form.Group className="form-row mb-3">
-                                <Label notify={true}>Last Name</Label>
-                                <br />
-                                <FormControl
-                                  type="type"
-                                  placeholder="Last Name"
-                                  name="lastName"
-                                  id="lastName"
-                                  value={this.state.lastName}
-                                  onChange={(e) => this.setState({ lastName: e.target.value })}
-                                  onBlur={handleBlur}
-                                  className="form-width"
-                                />
-                                <ErrorMessage name="lastName" component="span" className="error text-danger" />
-                              </Form.Group>
                             </Col>
-                            <Col xs={12} sm={8} className="px-4 pt-3">
+                            <Col xs={12} sm={12} md={12} lg={8} className="py-4 px-4">
                               <div className="row d-flex justify-content-center">
+                                <Col xs={12} sm={4} md={4}>
+                                  <Form.Group className="form-row mb-3">
+                                    <Label notify={true}>First Name</Label>
+                                    <br />
+                                    <FormControl
+                                      type="type"
+                                      name="firstName"
+                                      placeholder="First Name"
+                                      id="firstName"
+                                      value={values.firstName}
+                                      onChange={handleChange}
+                                      onBlur={handleBlur}
+                                      className="form-width"
+                                    />
+                                    <ErrorMessage name="firstName" component="span" className="error text-danger" />
+                                  </Form.Group>
+                                </Col>
+                                <Col xs={12} sm={4}>
+                                  <Form.Group className="form-row mb-3">
+                                    <Label>Middle Name</Label>
+                                    <br />
+                                    <FormControl
+                                      type="type"
+                                      name="middleName"
+                                      placeholder="Middle Name"
+                                      id="middleName"
+                                      value={values.middleName}
+                                      onChange={handleChange}
+                                      onBlur={handleBlur}
+                                      className="form-width"
+                                    />
+                                    <ErrorMessage name="middleName" component="span" className="error text-danger" />
+                                  </Form.Group>
+                                </Col>
+                                <Col xs={12} sm={4}>
+                                  <Form.Group className="form-row mb-3">
+                                    <Label notify={true}>Last Name</Label>
+                                    <br />
+                                    <FormControl
+                                      type="type"
+                                      placeholder="Last Name"
+                                      name="lastName"
+                                      id="lastName"
+                                      value={values.lastName}
+                                      onChange={handleChange}
+                                      onBlur={handleBlur}
+                                      className="form-width"
+                                    />
+                                    <ErrorMessage name="lastName" component="span" className="error text-danger" />
+                                  </Form.Group>
+                                </Col>
                                 <Col sm={6} xs={12}>
                                   <Form.Group className="form-row mb-3">
                                     <Label notify={true}>Email</Label>
@@ -452,9 +571,10 @@ class EditStudentDetails extends Component {
                                       placeholder="Email Address"
                                       name="email"
                                       id="email"
+                                      disabled={this.state.details.loginType !== "Email"}
                                       style={{ textTransform: "lowercase" }}
-                                      value={this.state.email}
-                                      onChange={(e) => this.setState({ email: e.target.value })}
+                                      value={values.email}
+                                      onChange={handleChange}
                                       onBlur={handleBlur}
                                       className="form-width"
                                     />
@@ -465,16 +585,19 @@ class EditStudentDetails extends Component {
                                   <Form.Group className="form-row mb-3">
                                     <Label>Phone Number</Label>
                                     <br />
-                                    <FormControl
-                                      type="phoneNumber"
-                                      placeholder="PhoneNumber"
-                                      name="phoneNumber"
-                                      id="phoneNumber"
-                                      value={this.state.phone}
-                                      onChange={(e) => this.setState({ phone: e.target.value })}
-                                      onBlur={handleBlur}
-                                      className="form-width"
-                                    />
+                                    <InputGroup className="mb-3">
+                                      <InputGroup.Text id="basic-addon1">+1</InputGroup.Text>
+                                      <FormControl
+                                        type="phoneNumber"
+                                        placeholder="PhoneNumber"
+                                        name="phoneNumber"
+                                        id="phoneNumber"
+                                        value={values.phone}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                        className="form-width"
+                                      />
+                                    </InputGroup>
                                     <ErrorMessage name="phoneNumber" component="span" className="error text-danger" />
                                   </Form.Group>
                                 </Col>
@@ -494,7 +617,7 @@ class EditStudentDetails extends Component {
                                         disableUnderline: true,
                                       }}
                                       format="MMM dd yyyy"
-                                      value={this.state.dob}
+                                      value={values.dob}
                                       onChange={(e) => {
                                         setFieldValue("dob", e);
                                         this.setDateFormat(e);
@@ -521,14 +644,12 @@ class EditStudentDetails extends Component {
                                     <br />
                                     <Select
                                       id="gender"
+                                      styles={customStyles}
                                       name="gender"
-                                      value={this.state.gender}
+                                      value={values.gender}
                                       placeholder="Select Gender"
                                       onChange={(e) => {
-                                        this.setState({
-                                          genderValue: e.value,
-                                          gender: e,
-                                        });
+                                        setFieldValue("gender", e);
                                       }}
                                       options={options}
                                     />
@@ -546,12 +667,8 @@ class EditStudentDetails extends Component {
                                       name="address1"
                                       placeholder="Address 1"
                                       id="address1"
-                                      value={this.state.address1}
-                                      onChange={(e) =>
-                                        this.setState({
-                                          address1: e.target.value,
-                                        })
-                                      }
+                                      value={values.address1}
+                                      onChange={handleChange}
                                       onBlur={handleBlur}
                                       className="form-width"
                                     />
@@ -567,12 +684,8 @@ class EditStudentDetails extends Component {
                                       name="address2"
                                       placeholder="Address2"
                                       id="address2"
-                                      value={this.state.address2}
-                                      onChange={(e) =>
-                                        this.setState({
-                                          address2: e.target.value,
-                                        })
-                                      }
+                                      value={values.address2}
+                                      onChange={handleChange}
                                       onBlur={handleBlur}
                                       className="form-width"
                                     />
@@ -586,18 +699,19 @@ class EditStudentDetails extends Component {
                                     <Label>State</Label>
                                     <br />
                                     <Select
-                                      value={this.state.state}
+                                      value={values.state}
+                                      styles={customStyles}
                                       name="state"
                                       placeholder="State"
                                       onChange={(e) => {
                                         this.Index(e);
                                         setFieldValue("state", e);
-                                        this.setState({
-                                          state: e,
-                                          stateValue: e.value,
-                                          cityValue: "",
-                                          city: "",
-                                        });
+                                        // this.setState({
+                                        //   state: e,
+                                        //   stateValue: e.value,
+                                        //   cityValue: "",
+                                        //   city: "",
+                                        // });
                                       }}
                                       options={[
                                         {
@@ -615,13 +729,14 @@ class EditStudentDetails extends Component {
                                     <Label>City</Label>
                                     <Select
                                       placeholder="City"
-                                      value={this.state.city}
+                                      styles={customStyles}
+                                      value={values.city}
                                       onChange={(e) => {
                                         setFieldValue("city", e);
-                                        this.setState({
-                                          city: e,
-                                          cityValue: e.value,
-                                        });
+                                        // this.setState({
+                                        //   city: e,
+                                        //   cityValue: e.value,
+                                        // });
                                       }}
                                       options={[
                                         {
@@ -643,9 +758,9 @@ class EditStudentDetails extends Component {
                                       name="zipCode"
                                       placeholder="Zip Code"
                                       id="zipCode"
-                                      value={this.state.zipCode}
+                                      value={values.zipCode}
                                       maxLength="5"
-                                      onChange={(e) => this.setState({ zipCode: e.target.value })}
+                                      onChange={handleChange}
                                       onBlur={handleBlur}
                                       className="form-width"
                                     />
@@ -653,85 +768,123 @@ class EditStudentDetails extends Component {
                                   </Form.Group>
                                 </Col>
                               </div>
-                              <div className="row d-flex justify-content-center">
-                                <Col sm={6} xs={12}>
-                                  <Form.Group className="form-row" style={{ marginRight: 20, width: "100%" }}>
-                                    <Label notify={true}>Password</Label>
-                                    <InputGroup className="input-group ">
-                                      <FormControl
-                                        type={this.state.passwordShown ? "text" : "password"}
-                                        name="password"
-                                        id="password"
-                                        value={values.password}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        className="form-width"
-                                        placeholder="Password"
-                                        onCopy={(e) => {
-                                          e.preventDefault();
-                                          return false;
+                              {this.state.details.loginType === "Email" && (
+                                <div>
+                                  {/* <div className="row d-flex justify-content-center">
+                                    <Col sm={6} xs={12}>
+                                      <Form.Group
+                                        className="form-row"
+                                        style={{
+                                          marginRight: 20,
+                                          width: "100%",
                                         }}
-                                        onPaste={(e) => {
-                                          e.preventDefault();
-                                          return false;
+                                      >
+                                        <Label notify={true}>Password</Label>
+                                        <InputGroup className="input-group ">
+                                          <FormControl
+                                            type={this.state.passwordShown ? "text" : "password"}
+                                            name="password"
+                                            id="password"
+                                            disabled={this.state.password}
+                                            value={values.password}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            className="form-width"
+                                            placeholder="Password"
+                                            onCopy={(e) => {
+                                              e.preventDefault();
+                                              return false;
+                                            }}
+                                            onPaste={(e) => {
+                                              e.preventDefault();
+                                              return false;
+                                            }}
+                                          />
+                                          <InputGroup.Text>
+                                            <FontAwesomeIcon
+                                              icon={this.state.passwordShown ? faEye : faEyeSlash}
+                                              onClick={() => this.togglePasswordVisibility()}
+                                              style={{ cursor: "pointer" }}
+                                              size="1x"
+                                            />
+                                          </InputGroup.Text>
+                                        </InputGroup>
+                                        <ErrorMessage name="password" component="span" className="error text-danger" />
+                                      </Form.Group>
+                                    </Col>
+                                    <Col sm={6} xs={12}>
+                                      <Form.Group
+                                        className="form-row"
+                                        style={{
+                                          marginRight: 20,
+                                          width: "100%",
                                         }}
-                                      />
-                                      <InputGroup.Text>
-                                        <FontAwesomeIcon
-                                          icon={this.state.passwordShown ? faEye : faEyeSlash}
-                                          onClick={() => this.togglePasswordVisibility()}
-                                          size="1x"
+                                      >
+                                        <Label notify={true}>Confirm Password</Label>
+                                        <InputGroup className="input-group ">
+                                          <FormControl
+                                            type={this.state.confirmPasswordShown ? "text" : "password"}
+                                            name="confirmPassword"
+                                            id="confirmPassword"
+                                            disabled={this.state.confirmPassword}
+                                            value={values.confirmPassword}
+                                            onChange={handleChange}
+                                            onCopy={(e) => {
+                                              e.preventDefault();
+                                              return false;
+                                            }}
+                                            onPaste={(e) => {
+                                              e.preventDefault();
+                                              return false;
+                                            }}
+                                            onBlur={handleBlur}
+                                            className="form-width"
+                                            placeholder="Confirm Password"
+                                          />
+                                          <InputGroup.Text>
+                                            <FontAwesomeIcon
+                                              icon={this.state.confirmPasswordShown ? faEye : faEyeSlash}
+                                              style={{ cursor: "pointer" }}
+                                              onClick={() => this.tooglePasswordVisibility()}
+                                              size="1x"
+                                            />
+                                          </InputGroup.Text>
+                                        </InputGroup>
+                                        <ErrorMessage
+                                          name="confirmPassword"
+                                          component="span"
+                                          className="error text-danger"
                                         />
-                                      </InputGroup.Text>
-                                    </InputGroup>
-                                    <ErrorMessage name="password" component="span" className="error text-danger" />
-                                  </Form.Group>
-                                </Col>
-                                <Col sm={6} xs={12}>
-                                  <Form.Group className="form-row" style={{ marginRight: 20, width: "100%" }}>
-                                    <Label notify={true}>Confirm Password</Label>
-                                    <InputGroup className="input-group ">
-                                      <FormControl
-                                        type={this.state.confirmPasswordShown ? "text" : "password"}
-                                        name="confirmPassword"
-                                        id="confirmPassword"
-                                        value={values.confirmPassword}
-                                        onChange={handleChange}
-                                        onCopy={(e) => {
-                                          e.preventDefault();
-                                          return false;
-                                        }}
-                                        onPaste={(e) => {
-                                          e.preventDefault();
-                                          return false;
-                                        }}
-                                        onBlur={handleBlur}
-                                        className="form-width"
-                                        placeholder="Confirm Password"
-                                      />
-                                      <InputGroup.Text>
-                                        <FontAwesomeIcon
-                                          icon={this.state.confirmPasswordShown ? faEye : faEyeSlash}
-                                          onClick={() => this.tooglePasswordVisibility()}
-                                          size="1x"
-                                        />
-                                      </InputGroup.Text>
-                                    </InputGroup>
-                                    <ErrorMessage
-                                      name="confirmPassword"
-                                      component="span"
-                                      className="error text-danger"
-                                    />
-                                  </Form.Group>
-                                </Col>
-                              </div>
+                                      </Form.Group>
+                                    </Col>
+                                  </div> */}
+                                  <div className="mt-2">
+                                    <Link
+                                      className="linkColor ps-1"
+                                      style={{
+                                        fontSize: 17,
+                                        fontFamily: "none",
+                                      }}
+                                      to={{
+                                        pathname: `/set/password`,
+                                      }}
+                                    >
+                                      Reset Password
+                                    </Link>
+                                  </div>
+                                </div>
+                              )}
                               <div className="d-flex justify-content-end my-3 pt-2">
                                 <Button
-                                  className="save-changes-active"
+                                  className={`${
+                                    this.state.isSubmit
+                                      ? "save-changes-disable Kharpi-save-btn"
+                                      : "save-changes-active Kharpi-save-btn"
+                                  }`}
                                   variant="contained"
                                   type="submit"
                                   onClick={handleSubmit}
-                                  disabled={this.state.isSubmit}
+                                  disabled={this.state.isSubmit === true}
                                 >
                                   SAVE CHANGES
                                 </Button>

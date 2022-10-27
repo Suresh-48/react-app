@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { ThemeProvider } from "@material-ui/styles";
 import { createTheme } from "@material-ui/core/styles";
 import { Container, Dropdown } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
 import { toast } from "react-toastify";
 
 // Roles
@@ -26,6 +26,8 @@ function CompletedCourseHistory() {
   const [isOpen, setIsOpen] = useState(false);
   const [data, setData] = useState([]);
   const [studentId, setStudentId] = useState("");
+  const token = localStorage.getItem("sessionId");
+  const history = useHistory();
 
   const isParent = role === ROLES_PARENT;
   const isStudent = role === ROLES_STUDENT;
@@ -46,7 +48,7 @@ function CompletedCourseHistory() {
 
   const parentColumns = [
     {
-      title: "S.no",
+      title: "S.No",
       width: "5%",
       render: (rowData) => `${rowData?.tableData?.id + 1}`,
     },
@@ -69,6 +71,17 @@ function CompletedCourseHistory() {
     {
       title: "Course Name",
       field: "courseId.name",
+      render: (rowData) => (
+        <Link
+          className="linkColor"
+          to={{
+            pathname: `/course/detail/${rowData.courseId?.aliasName}`,
+            state: { courseId: rowData.id },
+          }}
+        >
+          {rowData.courseId.name}
+        </Link>
+      ),
     },
     {
       title: "Teacher Name",
@@ -87,7 +100,7 @@ function CompletedCourseHistory() {
 
   const studentColumns = [
     {
-      title: "S.no",
+      title: "S.No",
       width: "5%",
       render: (rowData) => `${rowData?.tableData?.id + 1}`,
     },
@@ -106,6 +119,17 @@ function CompletedCourseHistory() {
     {
       title: "Course Name",
       field: "courseId.name",
+      render: (rowData) => (
+        <Link
+          className="linkColor"
+          to={{
+            pathname: `/course/detail/${rowData.courseId?.aliasName}`,
+            state: { courseId: rowData.id },
+          }}
+        >
+          {rowData.courseId.name}
+        </Link>
+      ),
     },
     {
       title: "Teacher Name",
@@ -117,11 +141,22 @@ function CompletedCourseHistory() {
       field: "payment",
     },
   ];
+
+  // Log out
+  const logout = () => {
+     setTimeout(() => {
+       localStorage.clear(history.push("/kharpi"));
+       window.location.reload();
+     }, 2000);
+  };
+
   const getCourseHistoryData = () => {
     const parentId = localStorage.getItem("parentId");
     const studentId = localStorage.getItem("studentId");
     setStudentId(studentId);
-    Api.get(`api/v1/${isParent ? "parent" : "student"}/courseHistory/${isParent ? parentId : studentId}`)
+    Api.get(`api/v1/${isParent ? "parent" : "student"}/courseHistory/${isParent ? parentId : studentId}`, {
+      headers: { token: token },
+    })
       .then((response) => {
         const data = response.data.courseHistory;
         setData(data);
@@ -134,7 +169,14 @@ function CompletedCourseHistory() {
           if (errorRequest && errorRequest.response) {
             errorMessage = JSON.parse(errorRequest.response).message;
           }
+
           toast.error(error.response.data.message);
+        }
+        const errorStatus = error?.response?.status;
+
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
         }
       });
   };
@@ -144,79 +186,86 @@ function CompletedCourseHistory() {
   }, []);
 
   return (
-    <div>
+    <div className="mb-3">
       {isLoading ? (
         <Loader />
       ) : (
-        <Container className="my-5">
-          <div className="d-flex justify-content-center align-items-center py-3">
+        <Container className="mt-0 mb-3">
+          <div className="py-3">
             <h4>Course History</h4>
           </div>
-          <ThemeProvider theme={tableTheme}>
-            <MaterialTable
-              icons={tableIcons}
-              columns={isParent ? parentColumns : studentColumns}
-              data={data}
-              options={{
-                actionsColumnIndex: -1,
-                addRowPosition: "last",
-                headerStyle: {
-                  fontWeight: "bold",
-                  backgroundColor: "#CCE6FF",
-                  zIndex: 0,
-                },
-                showTitle: false,
-              }}
-              actions={[
-                (rowData) => {
-                  return {
-                    icon: () => (
-                      <Dropdown>
-                        <Dropdown.Toggle className="teacher-menu-dropdown" varient="link">
-                          <FontAwesomeIcon icon={faEllipsisV} size="sm" color="#397ad4" />
-                        </Dropdown.Toggle>
-                        <Dropdown.Menu right className="menu-dropdown-status py-0">
-                          <Dropdown.Item className="status-list">
-                            <Link
-                              to={{
-                                pathname: `/upcoming/schedule/list/${rowData.studentId._id}`,
-                                state: { studentId: rowData.studentId._id },
-                              }}
-                              className="collapse-text-style"
-                            >
-                              View Schedules
-                            </Link>
-                          </Dropdown.Item>
-                          <hr />
-                          <Dropdown.Item className="status-list">
-                            <Link
-                              to={{
-                                pathname: `/teacher/profile/public`,
-                                state: {
-                                  teacherId: rowData.courseScheduleId.teacherId._id,
-                                },
-                              }}
-                              className="collapse-text-style"
-                            >
-                              View Teacher Details
-                            </Link>
-                          </Dropdown.Item>
-                        </Dropdown.Menu>
-                      </Dropdown>
-                    ),
-                    onClick: (event, rowData) => {
-                      setIsOpen(!isOpen);
-                    },
-                  };
-                },
-              ]}
-              localization={{
-                body: {
-                  emptyDataSourceMessage: "Courses Yet To Be Enroll",
-                },
-              }}
-            />
-          </ThemeProvider>
+          <div className="material-table-responsive">
+            <ThemeProvider theme={tableTheme}>
+              <MaterialTable
+                icons={tableIcons}
+                columns={isParent ? parentColumns : studentColumns}
+                data={data}
+                options={{
+                  actionsColumnIndex: -1,
+                  addRowPosition: "last",
+                  headerStyle: {
+                    fontWeight: "bold",
+                    backgroundColor: "#1d1464",
+                    color: "white",
+                    zIndex: 0,
+                  },
+                  showTitle: false,
+                }}
+                actions={[
+                  (rowData) => {
+                    return {
+                      icon: () => (
+                        <Dropdown>
+                          <Dropdown.Toggle className="teacher-menu-dropdown" varient="link">
+                            <FontAwesomeIcon icon={faEllipsisV} size="sm" color="#397ad4" />
+                          </Dropdown.Toggle>
+                          <Dropdown.Menu right className="menu-dropdown-status py-0">
+                            <Dropdown.Item className="status-list">
+                              <Link
+                                to={{
+                                  pathname: `/upcoming/schedule/list/${rowData.studentId._id}`,
+                                  state: {
+                                    studentId: rowData.studentId._id,
+                                    firstName: rowData?.studentId?.firstName,
+                                    lastName: rowData?.studentId?.lastName,
+                                  },
+                                }}
+                                className="collapse-text-style"
+                              >
+                                View Schedules
+                              </Link>
+                            </Dropdown.Item>
+                            <hr />
+                            <Dropdown.Item className="status-list">
+                              <Link
+                                to={{
+                                  pathname: `/teacher/profile/view`,
+                                  state: {
+                                    teacherId: rowData.courseScheduleId.teacherId._id,
+                                  },
+                                }}
+                                className="collapse-text-style"
+                              >
+                                View Teacher Details
+                              </Link>
+                            </Dropdown.Item>
+                          </Dropdown.Menu>
+                        </Dropdown>
+                      ),
+                      onClick: (event, rowData) => {
+                        setIsOpen(!isOpen);
+                      },
+                    };
+                  },
+                ]}
+                localization={{
+                  body: {
+                    emptyDataSourceMessage: "Courses Yet To Be Enroll",
+                  },
+                }}
+              />
+            </ThemeProvider>
+          </div>
         </Container>
       )}
     </div>

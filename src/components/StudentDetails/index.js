@@ -17,6 +17,8 @@ import Api from "../../Api";
 
 // style
 import "../../css/StudentDetails.scss";
+import { useHistory } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const tableTheme = createTheme({
   overrides: {
@@ -37,6 +39,16 @@ function StudentDetail(props) {
   const [isLoading, setisLoading] = useState(true);
   const [value, setValue] = useState(0);
   const [completeData, setcompeleteData] = useState([]);
+  const token = localStorage.getItem("sessionId");
+  const history = useHistory();
+
+  //logout
+  const logout = () => {
+     setTimeout(() => {
+       localStorage.clear(history.push("/kharpi"));
+       window.location.reload();
+     }, 2000);
+  };
 
   const columns = [
     {
@@ -77,11 +89,19 @@ function StudentDetail(props) {
   }, []);
 
   const userDetails = () => {
-    Api.get(`api/v1/student/61a856686ca31d3960764eb4`).then((response) => {
-      const data = response.data.data.getOne;
-      setUserDetail(data);
-      setisLoading(false);
-    });
+    Api.get(`api/v1/student/61a856686ca31d3960764eb4`)
+      .then((response) => {
+        const data = response.data.data.getOne;
+        setUserDetail(data);
+        setisLoading(false);
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
   // Get Student Upcoming Schedule
   const StudentUpcomingScheduleData = () => {
@@ -90,17 +110,18 @@ function StudentDetail(props) {
       params: {
         studentId: studentId,
       },
-    }).then((response) => {
-      const dataValues = response.data.upcomingList;
-      dataValues.sort(function compare(a, b) {
-        var dateA = new Date(a.lessonDate);
-        var dateB = new Date(b.lessonDate);
-        return dateA - dateB;
-      });
-      setData(dataValues);
-      setisLoading(false);
-    });
-  };
+    })
+      .then((response) => {
+        const dataValues = response.data.upcomingList;
+        dataValues.sort(function compare(a, b) {
+          var dateA = new Date(a.lessonDate);
+          var dateB = new Date(b.lessonDate);
+          return dateA - dateB;
+        });
+        setData(dataValues);
+        setisLoading(false);
+      })
+      };
 
   //get student complete list
   const StudentCompletelist = () => {
@@ -153,7 +174,7 @@ function StudentDetail(props) {
                 <p className="student-detail">{userDetail?.email}</p>
               </div>
               <Row className="course-card-style">
-                <DashboardTiles label="Active Enroll Courses" count={userDetail?.totalCourseEnrolled} />
+                <DashboardTiles label="Active Enrolled Courses" count={userDetail?.totalCourseEnrolled} />
                 <DashboardTiles label="Completed Courses" count="0" />
               </Row>
             </Row>
@@ -164,6 +185,8 @@ function StudentDetail(props) {
                 onChange={(event, newValue) => {
                   setValue(newValue);
                 }}
+                variant="fullWidth"
+                aria-label="full width tabs example"
               >
                 <Tab
                   label={
@@ -173,7 +196,7 @@ function StudentDetail(props) {
                       </Col>
                     </Row>
                   }
-                  style={{ width: "50%" }}
+                  style={{ minWidth: "50%" }}
                   value={0}
                 />
                 <Tab
@@ -184,7 +207,7 @@ function StudentDetail(props) {
                       </Col>
                     </Row>
                   }
-                  style={{ width: "55%" }}
+                  style={{ minWidth: "50%" }}
                   value={1}
                 />
               </Tabs>
@@ -192,54 +215,58 @@ function StudentDetail(props) {
             <hr />
             {value === 0 ? (
               <div>
-                <h5 className="d-flex justify-content-center py-3">Upcoming Schedule List</h5>
-                <ThemeProvider theme={tableTheme}>
-                  <MaterialTable
-                    icons={tableIcons}
-                    data={data}
-                    options={{
-                      actionsColumnIndex: -1,
-                      addRowPosition: "last",
-                      headerStyle: {
-                        fontWeight: "bold",
-                        backgroundColor: "#CCE6FF",
-                        zIndex: 0,
-                      },
-                      showTitle: false,
-                    }}
-                    columns={columns}
-                    localization={{
-                      body: {
-                        emptyDataSourceMessage: "No Upcoming Schedule List",
-                      },
-                    }}
-                  />
-                </ThemeProvider>
+                <h5 className="d-flex justify-content-center py-3">Upcoming Schedule</h5>
+                <div className="material-table-responsive">
+                  <ThemeProvider theme={tableTheme}>
+                    <MaterialTable
+                      icons={tableIcons}
+                      data={data}
+                      options={{
+                        actionsColumnIndex: -1,
+                        addRowPosition: "last",
+                        headerStyle: {
+                          fontWeight: "bold",
+                          backgroundColor: "#CCE6FF",
+                          zIndex: 0,
+                        },
+                        showTitle: false,
+                      }}
+                      columns={columns}
+                      localization={{
+                        body: {
+                          emptyDataSourceMessage: "No Upcoming Schedule",
+                        },
+                      }}
+                    />
+                  </ThemeProvider>
+                </div>
               </div>
             ) : (
               <div>
-                <h4 className="d-flex justify-content-center align-items-center py-3">Completed Schedule List</h4>
-                <ThemeProvider theme={tableTheme}>
-                  <MaterialTable
-                    icons={tableIcons}
-                    data={completeData}
-                    columns={columns}
-                    options={{
-                      actionsColumnIndex: -1,
-                      headerStyle: {
-                        fontWeight: "bold",
-                        backgroundColor: "#CCE6FF",
-                        zIndex: 0,
-                      },
-                      showTitle: false,
-                    }}
-                    localization={{
-                      body: {
-                        emptyDataSourceMessage: "No Completed Course",
-                      },
-                    }}
-                  />
-                </ThemeProvider>
+                <h4 className="d-flex justify-content-center align-items-center py-3">Completed Schedule </h4>
+                <div className="material-table-responsive">
+                  <ThemeProvider theme={tableTheme}>
+                    <MaterialTable
+                      icons={tableIcons}
+                      data={completeData}
+                      columns={columns}
+                      options={{
+                        actionsColumnIndex: -1,
+                        headerStyle: {
+                          fontWeight: "bold",
+                          backgroundColor: "#CCE6FF",
+                          zIndex: 0,
+                        },
+                        showTitle: false,
+                      }}
+                      localization={{
+                        body: {
+                          emptyDataSourceMessage: "No Completed Course",
+                        },
+                      }}
+                    />
+                  </ThemeProvider>
+                </div>
               </div>
             )}
           </div>

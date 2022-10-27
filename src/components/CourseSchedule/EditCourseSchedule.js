@@ -4,7 +4,7 @@ import { Formik, ErrorMessage } from "formik";
 import Button from "@material-ui/core/Button";
 import moment from "moment";
 import Select from "react-select";
-import TimezoneSelect from "react-timezone-select";
+import TimezonePicker from "react-bootstrap-timezone-picker";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
 import { KeyboardTimePicker, MuiPickersUtilsProvider, KeyboardDatePicker } from "@material-ui/pickers";
@@ -22,12 +22,13 @@ import "../../css/CreateCourseSchedule.scss";
 
 // Icon
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faClock } from "@fortawesome/free-solid-svg-icons";
+import { faCalendar, faClock } from "@fortawesome/free-solid-svg-icons";
 import { Avatar } from "@material-ui/core";
+import { customStyles } from "../core/Selector.js";
 
 // Validation
 const courseScheduleSchema = Yup.object().shape({
-  weekly: Yup.object().required("Day Is Required").nullable(),
+  weekly: Yup.string().required("Day Is Required"),
 
   enrollstudent: Yup.string()
     .matches(
@@ -77,55 +78,71 @@ export default class EditCourseSchedule extends Component {
     };
   }
 
+  // Log out
+  logout = () => {
+    setTimeout(() => {
+      localStorage.clear(this.props.history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
+
   //get course schedule data
   getCourseScheduleData = () => {
+    const token = localStorage.getItem("sessionId");
     const { courseScheduleId } = this.state;
     Api.get(`/api/v1/courseSchedule/get/schedule`, {
       params: {
         courseScheduleId: courseScheduleId,
+        token: token,
       },
-    }).then((res) => {
-      const data = res.data.scheduleOne;
-      const dateFormat = moment(data.startTime, ["LT"]).format("LLLL");
-      this.setState({
-        details: data,
-        startTime: dateFormat,
-        timeZone: data.timeZone,
-        isLoading: false,
-        weekly: { value: data.weeklyOn, label: data.weeklyOn },
-        weeklyId: data.weeklyOn,
-        startDate: data.startDate,
-        teacherNameValue: data?.teacherId?._id,
-        teacherName: data?.teacherId?._id
-          ? {
-              value: data?.teacherId?._id,
-              label: (
-                <div className="d-flex justify-content-start align-items-center">
-                  <Avatar round size="38" className="d-flex justify-content-center">
-                    <p className="dropdown-option mb-0">
-                      {data?.teacherId?.firstName.substring(0, 1)}
-                      {data?.teacherId?.middleName
-                        ? data?.teacherId?.middleName.substring(0, 1)
-                        : data?.teacherId?.lastName.substring(0, 1)}
-                    </p>
-                  </Avatar>
-                  <div className="dropdown-names">
-                    {`${
-                      data?.teacherId?.firstName +
-                      " " +
-                      data?.teacherId?.middleName +
-                      " " +
-                      data?.teacherId?.lastName +
-                      " "
-                    }`}
+    })
+      .then((res) => {
+        const data = res.data.scheduleOne;
+        const dateFormat = moment(data.startTime, ["LT"]).format("LLLL");
+        this.setState({
+          details: data,
+          startTime: dateFormat,
+          timeZone: data.timeZone,
+          isLoading: false,
+          weekly: data.weeklyOn,
+          weeklyId: data.weeklyOn,
+          startDate: data.startDate,
+          teacherNameValue: data?.teacherId?._id,
+          teacherName: data?.teacherId?._id
+            ? {
+                value: data?.teacherId?._id,
+                label: (
+                  <div className="d-flex justify-content-start align-items-center">
+                    <Avatar round size="38" className="d-flex justify-content-center">
+                      <p className="dropdown-option mb-0">
+                        {data?.teacherId?.firstName.substring(0, 1)}
+                        {data?.teacherId?.middleName
+                          ? data?.teacherId?.middleName.substring(0, 1)
+                          : data?.teacherId?.lastName.substring(0, 1)}
+                      </p>
+                    </Avatar>
+                    <div className="dropdown-names">
+                      {`${data?.teacherId?.firstName +
+                        " " +
+                        data?.teacherId?.middleName +
+                        " " +
+                        data?.teacherId?.lastName +
+                        " "}`}
+                    </div>
                   </div>
-                </div>
-              ),
-            }
-          : "",
-        teacherId: data?.teacherId?._id ? data?.teacherId?._id : null,
+                ),
+              }
+            : "",
+          teacherId: data?.teacherId?._id ? data?.teacherId?._id : null,
+        });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
       });
-    });
   };
 
   componentDidMount() {
@@ -145,12 +162,16 @@ export default class EditCourseSchedule extends Component {
   };
 
   // Date Format
-  setDateFormat = (e) => {
+  setDateFormat = (e, setFieldValue) => {
     const startTimeValue = moment(e).format("LLLL");
     this.setState({ startDate: startTimeValue });
+    const dayValue = moment(e).format("dddd");
+    setFieldValue("weekly", dayValue);
+    this.setState({ weekly: dayValue });
   };
   // Get Approved  Teachers
   getApprovedTeacher = () => {
+    const token = localStorage.getItem("sessionId");
     Api.get(`api/v1/teacher/list`).then((res) => {
       const data = res.data.teacherList;
       this.setState({ teacherList: data, isLoading: false });
@@ -162,9 +183,10 @@ export default class EditCourseSchedule extends Component {
     const { courseScheduleId, startDate } = this.state;
     const startTimeFormat = moment(values.startTime, "LLLL").format("LT");
     const dateValue = moment(startDate).format("ll");
+    const token = localStorage.getItem("sessionId");
     Api.patch(`/api/v1/courseSchedule/${courseScheduleId}`, {
       courseId: this.state.details.courseId,
-      weeklyOn: this.state.weeklyId,
+      weeklyOn: this.state.weekly,
       startTime: startTimeFormat,
       endTime: values.endTime,
       timeZone: values.timeZone,
@@ -174,16 +196,20 @@ export default class EditCourseSchedule extends Component {
       startDate: dateValue,
       teacherName: this.state.teacherNameValue,
       teacherId: this.state.teacherId,
+      token: token,
     })
       .then((response) => {
         const status = response.status;
         if (status === 201) {
           this.setState({ isSubmit: false });
+          this.props.history.goBack();
+          toast.success(response.data.message);
+
           Api.post("api/v1/teacherUpcomingSchedule", {
             courseScheduleId: courseScheduleId,
             teacherId: this.state.teacherId,
+            token: token,
           });
-          this.props.history.goBack();
         } else {
           toast.error(response.data.message);
           this.setState({ isSubmit: false });
@@ -199,6 +225,7 @@ export default class EditCourseSchedule extends Component {
           toast.error(error.response.data.message);
           this.setState({ isSubmit: false });
         }
+
         this.setState({ isSubmit: false });
       });
   };
@@ -212,15 +239,17 @@ export default class EditCourseSchedule extends Component {
           {isLoading ? (
             <Loader />
           ) : (
-            <Container>
+            <Container className="edit-course-lesson-style">
               <Row>
                 <Col lg={12} md={12} sm={12}>
-                  <div className="mb-4">
+                  <div className="mt-2 mb-4">
                     <h4>{courseName}</h4>
                   </div>
+                  <h5 className="text-center mb-3">Course schedule edit</h5>
                   <Formik
                     enableReinitialize={true}
                     initialValues={{
+                      startDate: this.state.startDate,
                       weekly: this.state.weekly,
                       startTime: this.state.startTime,
                       endTime: details.endTime,
@@ -241,20 +270,34 @@ export default class EditCourseSchedule extends Component {
                             <Row>
                               <Col xs={12} sm={6} md={6}>
                                 <Form.Group className="form-row mb-3">
-                                  <Label notify={true}>Weekly On</Label>
-                                  <Select
-                                    value={values.weekly}
-                                    placeholder="Choose Day..."
-                                    onChange={(e) => {
-                                      this.setState({
-                                        weekly: e,
-                                        weeklyId: e.value,
-                                      });
+                                  <Label notify={true}>Start Date</Label>
+                                  <br />
+                                  <KeyboardDatePicker
+                                    variant="standard"
+                                    className="start-time-style"
+                                    style={{ paddingLeft: 10 }}
+                                    placeholder="Select Start Date"
+                                    helperText={""}
+                                    InputProps={{
+                                      disableUnderline: true,
                                     }}
-                                    options={options}
+                                    format="MMM dd yyyy"
+                                    value={values.startDate}
+                                    onChange={(e) => {
+                                      setFieldValue("startDate", e);
+                                      this.setDateFormat(e, setFieldValue);
+                                    }}
+                                    keyboardIcon={
+                                      <FontAwesomeIcon
+                                        icon={faCalendar}
+                                        size="sm"
+                                        color="grey"
+                                        style={{ padding: 0 }}
+                                      />
+                                    }
                                   />
                                   <ErrorMessage
-                                    name="weekly"
+                                    name="startDate"
                                     component="span"
                                     className="error text-danger error-message"
                                   />
@@ -262,19 +305,19 @@ export default class EditCourseSchedule extends Component {
                               </Col>
                               <Col xs={12} sm={6} md={6}>
                                 <Form.Group className="form-row mb-3">
-                                  <Label notify={true}>Maximum Enroll Count</Label>
+                                  <Label notify={true}>Weekly On</Label>
                                   <FormControl
-                                    type="type"
-                                    name="enrollstudent"
-                                    id="enrollstudent"
-                                    placeholder="Maximum Student Allowed"
-                                    value={values.enrollstudent}
-                                    onChange={handleChange}
-                                    onBlur={handleBlur}
+                                    type="text"
+                                    id="weekly"
+                                    placeholder="weekly on"
+                                    value={this.state.weekly}
+                                    onChange={(e) => {
+                                      setFieldValue("weekly", e);
+                                    }}
                                     className="form-styles"
                                   />
                                   <ErrorMessage
-                                    name="enrollstudent"
+                                    name="weekly"
                                     component="span"
                                     className="error text-danger error-message"
                                   />
@@ -347,47 +390,38 @@ export default class EditCourseSchedule extends Component {
                             <Row>
                               <Col xs={12} sm={6}>
                                 <Form.Group className="form-row mb-3">
-                                  <Label notify={true}>Time Zone</Label>
-                                  <TimezoneSelect
-                                    value={values.timeZone}
-                                    onChange={(e) => setFieldValue("timeZone", e.value)}
-                                    timezones={{
-                                      "America/Chicago": "Central Time",
-                                    }}
+                                  <Label notify={true}>Maximum Enroll Count</Label>
+                                  <FormControl
+                                    type="type"
+                                    name="enrollstudent"
+                                    id="enrollstudent"
+                                    placeholder="Maximum Student Allowed"
+                                    value={values.enrollstudent}
+                                    onChange={handleChange}
+                                    onBlur={handleBlur}
+                                    className="form-styles"
                                   />
                                   <ErrorMessage
-                                    name="timeZone"
+                                    name="enrollstudent"
                                     component="span"
                                     className="error text-danger error-message"
                                   />
                                 </Form.Group>
                               </Col>
                               <Col xs={12} sm={6}>
+                                {" "}
                                 <Form.Group className="form-row mb-3">
-                                  <Label notify={true}>Start Date</Label>
+                                  <Label notify={true}>Time Zone</Label>
                                   <br />
-                                  <KeyboardDatePicker
-                                    variant="standard"
-                                    className="start-time-style"
-                                    style={{ paddingLeft: 10 }}
-                                    minDate={today}
-                                    placeholder="Select Start Date"
-                                    helperText={""}
-                                    InputProps={{
-                                      disableUnderline: true,
-                                    }}
-                                    format="MMM dd yyyy"
-                                    value={this.state.startDate}
-                                    onChange={(e) => {
-                                      setFieldValue("startDate", e);
-                                      this.setDateFormat(e);
-                                    }}
-                                    keyboardIcon={
-                                      <FontAwesomeIcon icon={faClock} size="sm" color="grey" style={{ padding: 0 }} />
-                                    }
+                                  <TimezonePicker
+                                    absolute={true}
+                                    value={values.timeZone}
+                                    placeholder="Select timezone..."
+                                    onChange={(e) => setFieldValue("timeZone", e)}
+                                    disabled
                                   />
                                   <ErrorMessage
-                                    name="startDate"
+                                    name="timeZone"
                                     component="span"
                                     className="error text-danger error-message"
                                   />
@@ -442,6 +476,7 @@ export default class EditCourseSchedule extends Component {
                                   <Label>Teachers</Label>
                                   <Select
                                     value={values.teacherName}
+                                    style={customStyles}
                                     placeholder="Assign Teachers..."
                                     onChange={(e) => {
                                       if (e.label === "None") {
@@ -464,20 +499,39 @@ export default class EditCourseSchedule extends Component {
                                         options: teacherList.map((list) => ({
                                           value: list.id,
                                           label: (
-                                            <div className="d-flex justify-content-start align-items-center">
-                                              <Avatar round size="38" className="d-flex justify-content-center">
-                                                <p className="dropdown-option mb-0">
-                                                  {list?.firstName.substring(0, 1)}
-                                                  {list.middleName
-                                                    ? list?.middleName.substring(0, 1)
-                                                    : list?.lastName.substring(0, 1)}
-                                                </p>
-                                              </Avatar>
-                                              <div className="dropdown-names">
-                                                {`${
-                                                  list.firstName + " " + list.middleName + " " + list.lastName + " "
-                                                }`}
-                                              </div>
+                                            <div>
+                                              {list.imageUrl ? (
+                                                <div className="d-flex justify-content-start align-items-center">
+                                                  <Avatar src={list.imageUrl} alr="" round={true} />
+                                                  <div className="dropdown-names">
+                                                    {`${list.firstName +
+                                                      " " +
+                                                      list.middleName +
+                                                      " " +
+                                                      list.lastName +
+                                                      " "}`}
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                <div className="d-flex justify-content-start align-items-center">
+                                                  <Avatar round size="38" className="d-flex justify-content-center">
+                                                    <p className="dropdown-option mb-0">
+                                                      {list?.firstName.substring(0, 1)}
+                                                      {list.middleName
+                                                        ? list?.middleName.substring(0, 1)
+                                                        : list?.lastName.substring(0, 1)}
+                                                    </p>
+                                                  </Avatar>
+                                                  <div className="dropdown-names">
+                                                    {`${list.firstName +
+                                                      " " +
+                                                      list.middleName +
+                                                      " " +
+                                                      list.lastName +
+                                                      " "}`}
+                                                  </div>
+                                                </div>
+                                              )}
                                             </div>
                                           ),
                                           name: ` ${list.firstName} ${list.middleName} ${list.lastName}`,
@@ -494,9 +548,9 @@ export default class EditCourseSchedule extends Component {
                               </Col>
                             </Row>
                             <div className="d-flex justify-content-end my-3">
+                              <Button className="Kharpi-cancel-btn me-3 px-3">Cancel</Button>
                               <Button
                                 type="submit"
-                                fullWidth
                                 disabled={!isValid || isSubmit}
                                 variant="contained"
                                 className={`${

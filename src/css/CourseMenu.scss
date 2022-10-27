@@ -1,22 +1,32 @@
 .sidenav {
-  margin: 0;
-  padding: 0;
-  width: 175px;
+  width: 100%;  
   background-color: #e9ecef;
-  position: fixed;
-  height: 100%;
-  left:0;
-  overflow-x: hidden;
+  position: relative;
+  z-index: 1;
+  
+}
+
+@media screen and (max-width: 767.98px) {
+  .sidenav  {
+    width: 100%;
+    // top: 108px;
+  }
 }
 
 .sidenav a {
-  display: block;
   color: black;
-  font-size: 18px;
-  padding: 16px 16px 16px 25px !important;
+  display: flex;
+  justify-content: center;
   text-decoration: none;
+  padding: 10px 10px 10px 10px;
 }
  
+.sidenav .nav-border-style {
+  border-right: 1px solid gray;
+  @media (max-width: 576px) {
+    border-right: unset;
+  }
+}
 
 .sidenav a:hover:not(.active) {
   background-color: #555;
@@ -29,23 +39,12 @@
   background-color: #1d1464 !important;
 }
 
-.sidenavbar{
-  width:100%;
-}
-
-@media screen and (max-width: 700px) {
-  .sidenav {
-    width: 100%;
-    height: auto;
-    position: relative;
-    top:0;
-  }
-  .sidenav a {float: left;}
-}
-
-@media screen and (max-width: 400px) {
-  .sidenav a {
-    text-align: center;
-    float: none;
+.edit-course-lesson-style{
+  margin-top: 30px;
+  // @media (max-width: 575.98px) {
+  //   margin-top: 135px;
+  // }
+  @media (min-width: 576px) and (max-width: 767.98px) {
+    margin-top: 65px;
   }
 }

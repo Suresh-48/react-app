@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Container, Row, Table, Button } from "react-bootstrap";
 import { Link, useHistory } from "react-router-dom";
 
-
 // Styles
 import DashboardTiles from "../../components/core/DashboardTiles";
 
@@ -13,6 +12,7 @@ import "../../css/ParentDashboard.scss";
 import Api from "../../Api";
 
 import Loader from "../core/Loader";
+import { toast } from "react-toastify";
 
 function ParentDashboard() {
   const parent = localStorage.getItem("parentId");
@@ -22,6 +22,7 @@ function ParentDashboard() {
   const [studentList, setstudentList] = useState([]);
   const [count, setCount] = useState("");
   const [isLoading, setisLoading] = useState(true);
+  const token = localStorage.getItem("sessionId");
 
   const history = useHistory();
 
@@ -51,6 +52,14 @@ function ParentDashboard() {
     });
   };
 
+  // Log out
+  const logout = () => {
+    setTimeout(() => {
+      localStorage.clear(history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
+
   const getStudentCompletedSchedule = () => {
     const parentId = localStorage.getItem("parentId");
     Api.get("api/v1/upcomingcourse/parent/complete/list", {
@@ -69,12 +78,21 @@ function ParentDashboard() {
     Api.get("api/v1/parent/student/list", {
       params: {
         parentId: parentId,
+        token: token,
       },
-    }).then((res) => {
-      const data = res?.data?.data?.studentList;
-      setstudentList(data);
-      setisLoading(false);
-    });
+    })
+      .then((res) => {
+        const data = res?.data?.data?.studentList;
+        setstudentList(data);
+        setisLoading(false);
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
 
   // Get Details
@@ -82,11 +100,20 @@ function ParentDashboard() {
     Api.get("api/v1/dashboard/parent/", {
       params: {
         parentId: parentId,
+        token: token,
       },
-    }).then((res) => {
-      const data = res?.data?.data;
-      setCount(data);
-    });
+    })
+      .then((res) => {
+        const data = res?.data?.data;
+        setCount(data);
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
 
   return (
@@ -94,30 +121,37 @@ function ParentDashboard() {
       {isLoading ? (
         <Loader />
       ) : (
-        <Container className="mt-5">
-          <Row className="main-card pt-5">
+        <Container className="mt-0">
+          <Row className=" pt-0">
             <DashboardTiles label="Student" count={count?.totalStudent} url="/parent/student" />
 
-            <DashboardTiles label="Active Enroll Courses" count={count.activeCourse} url="#" />
+            <DashboardTiles
+              className="parent-dashbord-classname"
+              label="Active Enrolled Courses"
+              count={count.activeCourse}
+              url="/active/enroll/course/list"
+            />
 
-            <DashboardTiles label="Completed Courses" count={completeData} url="#" />
+            <DashboardTiles label="Completed Courses" count={count.completeCourse} url="/completed/course/list" />
           </Row>
 
-          <Row className="parentdash-two">
-            <div className="d-flex justify-content-center align-items-center ">
-              <h4>Upcoming Schedule List</h4>
-            </div>
+          <Row className="mt-5" style={{ minHeight: "227px" }}>
+            <div className="d-flex justify-content-between">
+              <div>
+                <h5>Upcoming Schedule </h5>
+              </div>
 
-            <div className="enroll-link pb-2">
-              <Button
-                variant="primary"
-                className="dashboard-button-style"
-                onClick={() => history.push("/landing-page")}
-              >
-                Enroll
-              </Button>
+              <div>
+                <Button
+                  variant="primary Kharpi-save-btn"
+                  className="w-100 px-5"
+                  onClick={() => history.push("/course/search")}
+                >
+                  Enroll
+                </Button>
+              </div>
             </div>
-            <Table striped bordered hover className="parent-table">
+            <Table striped bordered hover className="student-table" responsive>
               <thead>
                 <tr className="viewRow">
                   <th>S.No</th>
@@ -139,14 +173,14 @@ function ParentDashboard() {
                       <td>{list?.lessonDate}</td>
                       <td>{list?.courseScheduleId?.startTime}</td>
                       <td>{list?.courseScheduleId?.endTime}</td>
-                      <td>{list?.courseId?.name}</td>
+                      <td className="linkColor">{list?.courseId?.name}</td>
                       <td>{list?.courseLessonId?.lessonName}</td>
                       <td>{list?.courseId?.duration + " hour"}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8">
+                    <td colSpan="8" className="colspan-data-alignment">
                       <h6 className="d-flex justify-content-center">No Records to Display</h6>
                     </td>
                   </tr>

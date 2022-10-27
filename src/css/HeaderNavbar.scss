@@ -21,6 +21,7 @@
 
 .avatar-style {
   padding-top:2px !important;
+  color: #1d1464 !important;
   cursor: pointer;
 }
 
@@ -34,10 +35,15 @@
   position: fixed;
   top: 0;
   width: 100%;
-  z-index: 1;
+  z-index: 3;
 }
 
 .carousel-control-next {
   right: 0;
   z-index: 0;
+}
+
+.carousel-control-prev {
+  left: 0;
+  z-index: 0 !important;
 }

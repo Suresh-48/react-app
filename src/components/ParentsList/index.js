@@ -1,30 +1,43 @@
-import MaterialTable from 'material-table'
-import React, { useEffect, useState } from 'react'
-import { Container, Row } from 'react-bootstrap'
-import { useHistory } from 'react-router-dom'
+import MaterialTable from "material-table";
+import React, { useEffect, useState } from "react";
+import { Container, Row, Modal } from "react-bootstrap";
+import { useHistory } from "react-router-dom";
 import { ThemeProvider } from "@material-ui/styles";
 import { createTheme } from "@material-ui/core/styles";
+import ParentPublicProfile from "../ParentPublicProfile";
 
 // Api
-import Api from '../../Api'
+import Api from "../../Api";
 
 //icon
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faEye } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye, faUserCircle } from "@fortawesome/free-solid-svg-icons";
 
 // Component
-import { tableIcons } from '../core/TableIcons'
+import { tableIcons } from "../core/TableIcons";
 
 //Loader
-import Loader from '../../components/core/Loader'
+import Loader from "../../components/core/Loader";
 
 //css
-import '../../css/ParentList.scss';
+import "../../css/ParentList.scss";
+import { toast } from "react-toastify";
 
 function ParentsList(props) {
-  const [ data, setData ] = useState([])
-  const [ isLoading, setIsLoading ] = useState(true)
-  const history = useHistory()
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const history = useHistory();
+  const [parentId, setParentId] = useState("");
+  const [show, setshow] = useState(false);
+  const token = localStorage.getItem("sessionId");
+
+  //logout
+  const logout = () => {
+    setTimeout(() => {
+      localStorage.clear(history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
 
   const tableTheme = createTheme({
     overrides: {
@@ -41,82 +54,140 @@ function ParentsList(props) {
 
   const columns = [
     {
-      title: 'S.No',
+      title: "S.No",
       render: (rowData) => rowData.tableData.id + 1,
-      width: '3%',
+      width: "3%",
     },
-    { title: 'First Name', field: 'firstName' },
-    { title: 'Last Name', field: 'lastName' },
-    { title: 'Email', field: 'email' },
     {
-      title: 'No. Of Students Enrolled',
-      field: 'totalStudentEnroll',
-      cellStyle: { width: 250 },
+      title: "Name",
+      cellStyle: { textAlign: "center" },
+      headerStyle: { textAlign: "center" },
+      render: (rowData) => (
+        <div className="linkColor">
+          <u>
+            <text
+              onClick={() => {
+                setParentId(rowData.id);
+                setshow(true);
+              }}
+            >
+              {`${rowData.firstName} ${rowData.lastName}`}
+            </text>
+          </u>
+        </div>
+      ),
     },
-  ]
+    {
+      title: "Email",
+      field: "email",
+      cellStyle: { textAlign: "center" },
+      headerStyle: { textAlign: "center" },
+    },
+    {
+      title: "No. Of Students Enrolled",
+      field: "totalStudentEnroll",
+      cellStyle: { textAlign: "center", width: "350px" },
+      headerStyle: { textAlign: "center" },
+    },
+  ];
 
   // Get Parent List
   const ParentsListData = () => {
-    Api.get('api/v1/parent/', {}).then((res) => {
-      const data = res.data.data.data
-      setData(data)
-      setIsLoading(false)
-    })
-  }
+    Api.get("api/v1/parent/", { headers: { token: token } })
+      .then((res) => {
+        const data = res.data.data.data;
+        setData(data);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
+      });
+  };
+
+  const handleModal = () => {
+    setshow(false);
+  };
 
   useEffect(() => {
-    ParentsListData()
-  }, [])
+    ParentsListData();
+  }, []);
 
   return (
     <div>
       {isLoading ? (
-        <Loader />) : (
+        <Loader />
+      ) : (
         <Container>
           <Row>
-            <h3 className="parents-title">
-              Parents List
-            </h3>
+            <h3>Parents</h3>
           </Row>
-          <ThemeProvider theme={tableTheme}>
-            <MaterialTable
-              title="Parent Information"
-              icons={tableIcons}
-              options={{
-                showTitle: false,
-                headerStyle: {
-                  backgroundColor: '#CCE6FF', zIndex: 0,
-                  fontWeight: "bold",
-                },
-                actionsColumnIndex: -1,
-                addRowPosition: 'last',
-              }}
-              columns={columns}
-              data={data}
-              actions={[
-                {
-                  icon: () => (
-                    <FontAwesomeIcon icon={faEye} size="sm" color="#397ad4" />
-                  ),
-                  tooltip: 'View Student Details',
-                  onClick: (event, rowData) => {
-                    history.push({
-                      pathname: `/student/list/${rowData.id}`,
-                    })
+          <div className="material-table-responsive">
+            <ThemeProvider theme={tableTheme}>
+              <MaterialTable
+                title="Parent Information"
+                style={{ marginBottom: "10px" }}
+                icons={tableIcons}
+                options={{
+                  showTitle: false,
+                  headerStyle: {
+                    backgroundColor: "#1d1464",
+                    color: "white",
+                    zIndex: 0,
+                    fontWeight: "bold",
+                    minWidth: "150px",
                   },
-                },
-              ]}
-              localization={{
-                body: {
-                  emptyDataSourceMessage: 'No Parents List',
-                },
-              }}
-            />
-          </ThemeProvider>
+                  actionsColumnIndex: -1,
+                  addRowPosition: "last",
+                }}
+                columns={columns}
+                data={data}
+                actions={[
+                  {
+                    icon: () => (
+                      <p
+                        className="enroll-style"
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "bold",
+                          marginBottom: 0,
+                          color: "#375474",
+                          textAlign: "center",
+                        }}
+                      >
+                        View Students
+                      </p>
+                      // <FontAwesomeIcon icon={faEye} size="sm" color="#375474" />
+                    ),
+                    tooltip: "View Student List",
+                    onClick: (event, rowData) => {
+                      history.push({
+                        pathname: `/student/list/${rowData.id}`,
+                      });
+                    },
+                  },
+                ]}
+                localization={{
+                  body: {
+                    emptyDataSourceMessage: "No Parents List",
+                  },
+                }}
+              />
+            </ThemeProvider>
+          </div>
         </Container>
       )}
+      <Modal show={show} onHide={() => handleModal()} dialogClassName="popup-container-Style">
+        <Modal.Header closeButton className="popup-header-close-style" />
+        <Modal.Body id="contained-modal-title-vcenter " className="popup-body-style">
+          <ParentPublicProfile parentId={parentId} />
+        </Modal.Body>
+      </Modal>
     </div>
-  )
+  );
 }
 
-export default ParentsList
+export default ParentsList;

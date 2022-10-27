@@ -98,3 +98,32 @@ $lines-to-show: 3;
   -webkit-line-clamp: $lines-to-show !important;
   -webkit-box-orient: vertical;
 }
+.multiSelectContainer input {
+  margin-top: 0px;
+  margin-bottom: 2px;
+}
+.search-col{
+
+  width: 350px;
+  @media (max-width:463px){
+    width: 280px;
+  }
+  @media (max-width:390px){
+    width:200px
+  }
+}
+.filter-ico{
+  height: 38px !important;
+  cursor: pointer;
+}
+
+.filter-head-cls{
+  font-weight: bold;
+  margin-bottom: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.range-clr{
+  color: #375474 !important;
+}

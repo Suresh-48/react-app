@@ -24,24 +24,17 @@ import { faBookOpen, faDollarSign, faTrashAlt } from "@fortawesome/free-solid-sv
 import Label from "../../components/core/Label";
 import Loader from "../core/Loader";
 
+//selector custom style
+import { customStyles } from "../core/Selector";
+
 const SignInSchema = Yup.object().shape({
   category: Yup.object().required("Category Name Is Required"),
   courseName: Yup.string().required("Course Name Is Required"),
   descriptionValue: Yup.string().required("Description Is Required"),
-  actualAmount: Yup.string()
-    .matches(
-      /^((\\+[1-9]{1,4}[ \\-]*)|(\\([0-9]{2,3}\\)[ \\-]*)|([0-9]{2,4})[ \\-]*)*?[0-9]{0,4}?[ \\-]*[0-9]{0,4}?$/,
-      "Actual Amount Is Invalid"
-    )
-    .required("Actual Amount Is Required"),
-  discountAmount: Yup.string()
-    .matches(
-      /^((\\+[1-9]{1,4}[ \\-]*)|(\\([0-9]{2,3}\\)[ \\-]*)|([0-9]{2,4})[ \\-]*)*?[0-9]{0,4}?[ \\-]*[0-9]{0,4}?$/,
-      "Discount Amount Is Invalid"
-    )
-    .required("Discount Amount Is Required"),
   courseImage: Yup.mixed().required("Image Is Required"),
-  duration: Yup.object().required("Duration is Required").nullable(),
+  duration: Yup.object()
+    .required("Duration is Required")
+    .nullable(),
 });
 
 export default class CoursesCreation extends Component {
@@ -58,6 +51,7 @@ export default class CoursesCreation extends Component {
       date: "",
       isFuture: false,
       imagePreview: undefined,
+      categoryImagePreview: undefined,
       isSubmit: false,
       duration: "1",
       durationValue: "",
@@ -79,29 +73,38 @@ export default class CoursesCreation extends Component {
 
   // Get Course Category
   getCategory = () => {
-    Api.get("api/v1/category").then((res) => {
-      const option = res.data.data.data;
-      this.setState({ options: option, isLoading: false });
-    });
+    const token = localStorage.getItem("sessionId");
+    Api.get("/api/v1/category/", { headers: { token: token } })
+      .then((res) => {
+        const option = res.data.data.data;
+        this.setState({ options: option, isLoading: false });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
 
   handleModal() {
-    this.setState({ show: !this.state.show, selectCategory: "" });
+    this.setState({ show: !this.state.show, selectCategory: "", categoryImagePreview: undefined });
   }
 
   // Form submit
   submitForm = (values) => {
+    const token = localStorage.getItem("sessionId");
     const convertedData = JSON.stringify(convertToRaw(this.state.description.getCurrentContent()));
     this.setState({ isSubmit: true });
     Api.post("api/v1/course", {
       category: this.state.categoryId,
       name: values.courseName,
       description: convertedData,
-      actualAmount: values.actualAmount,
-      discountAmount: values.discountAmount,
       type: this.state.typeId,
       isFuture: this.state.isFuture,
       duration: this.state.duration,
+      token: token,
     })
       .then((response) => {
         const status = response.status;
@@ -112,6 +115,7 @@ export default class CoursesCreation extends Component {
             Api.patch("api/v1/course/image/upload", {
               courseId: courseId,
               image: this.state.imagePreview,
+              token: token,
             }).then((res) => {
               this.props.history.goBack();
               this.setState({ isSubmit: false });
@@ -135,20 +139,52 @@ export default class CoursesCreation extends Component {
           toast.error(error.response.data.message);
           this.setState({ isSubmit: false });
         }
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
         this.setState({ isSubmit: false });
       });
+  };
+
+  // Log out
+  logout = () => {
+   setTimeout(() => {
+     localStorage.clear(this.props.history.push("/kharpi"));
+     window.location.reload();
+   }, 2000);
   };
 
   // Create Category
   createCategory = () => {
     this.setState({ isSubmit: true });
-    Api.post("api/v1/category", {
+    const userId = localStorage.getItem("userId");
+    const token = localStorage.getItem("sessionId");
+    Api.post("api/v1/category/", {
       name: this.state.selectCategory,
+      createdBy: userId,
+      token: token,
     })
       .then((response) => {
         const status = response.status;
         const data = response.data.data;
+        const categoryImage = this.state.categoryImagePreview;
         if (status === 201) {
+          if (categoryImage) {
+            const categoryId = response.data.data.createCategory.id;
+            Api.patch("api/v1/category/image/upload", {
+              categoryId: categoryId,
+              image: this.state.categoryImagePreview,
+              token: token,
+            }).then((res) => {
+              this.getCategory();
+              this.setState({ isSubmit: false });
+            });
+          } else {
+            this.props.history.goBack();
+            this.setState({ isSubmit: false });
+          }
           this.setState({
             category: {
               id: data?.createCategory?.id,
@@ -187,6 +223,14 @@ export default class CoursesCreation extends Component {
     setFieldValue("courseImage", base64);
   };
 
+  // Select Image from file
+  selectCategoryFile = async (event) => {
+    const file = event.target.files[0];
+    const type = file?.type?.split("/")[0];
+    const base64 = await this.convertBase64(file);
+    this.setState({ categoryImagePreview: base64, imageType: type });
+  };
+
   // Convert Image to Base64
   convertBase64 = (file) => {
     return new Promise((resolve, reject) => {
@@ -204,6 +248,10 @@ export default class CoursesCreation extends Component {
   closePreview = (setFieldValue) => {
     this.setState({ imagePreview: undefined });
     setFieldValue("courseImage", "");
+  };
+
+  categoryImageClosePReview = () => {
+    this.setState({ categoryImagePreview: undefined });
   };
 
   render() {
@@ -228,8 +276,6 @@ export default class CoursesCreation extends Component {
                   courseName: "",
                   description: "",
                   descriptionValue: "",
-                  actualAmount: "",
-                  discountAmount: "",
                   type: { value: "Draft", label: "Draft" },
                   courseImage: "",
                   duration: { value: "1", label: "1 Hour" },
@@ -248,6 +294,7 @@ export default class CoursesCreation extends Component {
                               <Label notify={true}>Category</Label>
                               <Select
                                 value={values.category}
+                                styles={customStyles}
                                 placeholder="Select Category"
                                 name="category"
                                 onChange={(e) => {
@@ -267,7 +314,7 @@ export default class CoursesCreation extends Component {
                                     label: "Create New Category",
                                   },
                                   {
-                                    options: this.state.options.map((list) => ({
+                                    options: this?.state?.options?.map((list) => ({
                                       value: list.id,
                                       label: list.name,
                                     })),
@@ -280,7 +327,7 @@ export default class CoursesCreation extends Component {
                                 className="error text-danger error-message"
                               />
                             </Form.Group>
-                            <Form.Group className="form-row mb-3" controlId="courseName">
+                            <Form.Group className="form-row mb-3">
                               <Label notify={true}>Course Name</Label>
                               <FormControl
                                 type="type"
@@ -316,59 +363,7 @@ export default class CoursesCreation extends Component {
                               </div>
                               <ErrorMessage name="descriptionValue" component="span" className="error text-danger" />
                             </div>
-                            <div className="row mb-3">
-                              <Col xs={12} sm={6}>
-                                <Form.Group className="form-row" style={{ marginRight: 20, width: "100%" }}>
-                                  <Label notify={true}>Actual Amount</Label>
-                                  <InputGroup className="input-group ">
-                                    <InputGroup.Text>
-                                      <FontAwesomeIcon icon={faDollarSign} size="1x" />
-                                    </InputGroup.Text>
-                                    <FormControl
-                                      type="type"
-                                      placeholder="Course Actual Amount"
-                                      name="actualAmount"
-                                      id="actualAmount"
-                                      value={values.actualAmount}
-                                      onChange={handleChange}
-                                      onBlur={handleBlur}
-                                      className="form-styles"
-                                    />
-                                  </InputGroup>
-                                  <ErrorMessage
-                                    name="actualAmount"
-                                    component="span"
-                                    className="error text-danger error-message"
-                                  />
-                                </Form.Group>
-                              </Col>
-                              <Col xs={12} sm={6}>
-                                <Form.Group className="form-row " style={{ width: "100%" }}>
-                                  <Label notify={true}>Discount Amount</Label>
-                                  <br />
-                                  <InputGroup className="input-group ">
-                                    <InputGroup.Text>
-                                      <FontAwesomeIcon icon={faDollarSign} size="1x" />
-                                    </InputGroup.Text>
-                                    <FormControl
-                                      type="type"
-                                      placeholder="Course Discount Amount"
-                                      name="discountAmount"
-                                      id="discountAmount"
-                                      value={values.discountAmount}
-                                      onChange={handleChange}
-                                      onBlur={handleBlur}
-                                      className="form-styles"
-                                    />
-                                  </InputGroup>
-                                  <ErrorMessage
-                                    name="discountAmount"
-                                    component="span"
-                                    className="error text-danger error-message"
-                                  />
-                                </Form.Group>
-                              </Col>
-                            </div>
+
                             <div className="row mb-3">
                               <Col xs={12} sm={6} md={6}>
                                 <Form.Group className="form-row" style={{ marginRight: 20, width: "100%" }}>
@@ -376,6 +371,7 @@ export default class CoursesCreation extends Component {
                                   <br />
                                   <Select
                                     value={values.type}
+                                    styles={customStyles}
                                     placeholder="Select Status"
                                     onChange={(e) => {
                                       setFieldValue("type", e);
@@ -385,10 +381,10 @@ export default class CoursesCreation extends Component {
                                     }}
                                     options={[
                                       { value: "Draft", label: "Draft" },
-                                      {
-                                        value: "Publish",
-                                        label: "Publish",
-                                      },
+                                      // {
+                                      //   value: "Publish",
+                                      //   label: "Publish",
+                                      // },
                                     ]}
                                   />
                                   <ErrorMessage
@@ -403,6 +399,7 @@ export default class CoursesCreation extends Component {
                                   <Label notify={true}>Duration</Label>
                                   <Select
                                     name="duration"
+                                    styles={customStyles}
                                     placeholder="Select Duration"
                                     value={values.duration}
                                     onChange={(e) => {
@@ -445,7 +442,7 @@ export default class CoursesCreation extends Component {
                           <Col md={5}>
                             <Row>
                               <Row className="d-flex justify-content-center  ">
-                                <label class="file-upload">
+                                <label className="file-upload">
                                   <input
                                     type="file"
                                     name="courseImage"
@@ -517,7 +514,7 @@ export default class CoursesCreation extends Component {
                             <Button
                               type="submit"
                               disabled={!isValid || this.state.isSubmit}
-                              fullWidth
+                              style={{ width: "30%" }}
                               variant="contained"
                               className={`${!isValid || this.state.isSubmit ? "create-disable" : "create-active"}`}
                             >
@@ -555,13 +552,72 @@ export default class CoursesCreation extends Component {
                           </Form.Group>
                         </Form>
                       </Row>
+                      <Row>
+                        <Form className="category-form-style">
+                          <Form.Group className="form-row mb-1" style={{ width: "100%" }}>
+                            <Label notify={true}>Select Category Image</Label>
+                          </Form.Group>
+                          <Form.Group className="form-row " style={{ width: "100%", marginBottom: "30px" }}>
+                            <label className="file-upload">
+                              <input
+                                type="file"
+                                name="courseImage"
+                                accept="image/*"
+                                className="fileToUpload"
+                                id="fileToUpload"
+                                onChange={(e) => {
+                                  this.selectCategoryFile(e);
+                                }}
+                              />
+                              {this.state.categoryImagePreview ? "Change Image" : "Upload Image"}
+                            </label>
+                          </Form.Group>
+                        </Form>
+                      </Row>
+                      <Row>
+                        <div>
+                          {this.state.categoryImagePreview ? (
+                            <div>
+                              <div className="d-flex justify-content-center mt-4">
+                                <img className="image-preview-size" src={this.state.categoryImagePreview} alt="" />
+                              </div>
+                              <div className="d-flex justify-content-center align-items-center mt-3 ">
+                                {this.state.imageType !== "image" ? (
+                                  <p className="d-flex justify-content-center error text-danger fs-6">
+                                    Please Select A Image File
+                                  </p>
+                                ) : (
+                                  <p
+                                    style={{
+                                      color: "red",
+                                      fontWeight: "400",
+                                      cursor: "pointer",
+                                    }}
+                                    onClick={() => {
+                                      this.categoryImageClosePReview();
+                                    }}
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faTrashAlt}
+                                      size="sm"
+                                      color="#bf1000"
+                                      className="delete-icon"
+                                    />
+                                    Remove Image
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      </Row>
                       <Row className="button-content-style">
                         <Col xs={6} sm={6} md={6}>
                           <Button
                             type="submit"
                             fullWidth
-                            variant="contained"
                             color="#fff"
+                            className="Kharpi-cancel-btn"
                             style={{ width: "100%", borderRadius: 5 }}
                             onClick={() => this.handleModal()}
                           >
@@ -571,10 +627,17 @@ export default class CoursesCreation extends Component {
                         <Col xs={6} sm={6} md={6}>
                           <Button
                             type="submit"
+                            // className="Kharpi-save-btn"
                             fullWidth
+                            // style={{color:"white"}}
                             variant="contained"
                             color="primary"
-                            disabled={this.state.selectCategory === "" || this.state.isSubmit}
+                            disabled={
+                              this.state.selectCategory === "" ||
+                              this.state.isSubmit ||
+                              this.state.categoryImagePreview === "" ||
+                              this.state.categoryImagePreview === undefined
+                            }
                             onClick={() => this.createCategory()}
                           >
                             Create

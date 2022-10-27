@@ -23,7 +23,6 @@ function StudentDashboard() {
   const [data, setData] = useState([]);
   const [upcomingData, setUpcomingData] = useState([]);
   const [completedList, setCompletedList] = useState([]);
-  const [studentId, setstudentId] = useState([]);
   const history = useHistory();
   const [isLoading, setisLoading] = useState(true);
   const [CurrentDate, setCurrentDate] = useState("");
@@ -33,15 +32,27 @@ function StudentDashboard() {
   const [show, setshow] = useState(false);
   const [showAlert, setshowAlert] = useState(false);
   const [isStudent, setIsStudent] = useState(false);
+  const [studentCourseScheduleId, setStudentCourseScheduleId] = useState("");
+  const [sessionEndModal, setSessionEndModal] = useState(false);
+  const [zoomStartTimeGet, setZoomStartTimeGet] = useState("");
+  const [sessionOpen, setSessionOpen] = useState(false);
+  const token = localStorage.getItem("sessionId");
+  const studentId = localStorage.getItem("studentId");
 
   function closeShow() {
     setshowAlert(false);
   }
 
+  // Log out
+  const logout = () => {
+    setTimeout(() => {
+      localStorage.clear(history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
+
   // Get Student Data
   const getStudentDashboardData = () => {
-    const studentId = localStorage.getItem("studentId");
-    setstudentId(studentId);
     Api.get(`api/v1/dashboard/student/`, {
       params: {
         studentId: studentId,
@@ -54,7 +65,6 @@ function StudentDashboard() {
   };
 
   const getStudentUpcomingSchedule = () => {
-    const studentId = localStorage.getItem("studentId");
     Api.get("api/v1/upcomingcourse/student/list", {
       params: {
         studentId: studentId,
@@ -68,8 +78,10 @@ function StudentDashboard() {
       });
       setUpcomingData(dataValues);
       const orginalTime = response.data.upcomingList;
-      orginalTime.forEach(function (list) {
-        const time = moment(list.courseScheduleId.startTime, "LT").subtract(15, "minutes").format("LT");
+      orginalTime.forEach(function(list) {
+        const time = moment(list.courseScheduleId.startTime, "LT")
+          .subtract(15, "minutes")
+          .format("HH:mm");
         list.courseScheduleId["zoomTime"] = time;
       });
       setisLoading(false);
@@ -77,7 +89,6 @@ function StudentDashboard() {
   };
 
   const getStudentCompletedSchedule = () => {
-    const studentId = localStorage.getItem("studentId");
     Api.get("api/v1/upcomingcourse/student/complete/list", {
       params: {
         studentId: studentId,
@@ -92,15 +103,50 @@ function StudentDashboard() {
     getStudentDashboardData();
     getStudentUpcomingSchedule();
     getStudentCompletedSchedule();
-    const currentDate = moment().format();
-    const date = moment(currentDate).utc().format("ll");
-    var lessTime = moment(currentDate).format("LT");
+    const currentDate = moment()
+      .tz("America/Chicago")
+      .format();
+    const date = moment(currentDate)
+      .tz("America/Chicago")
+      .format("ll");
+    var lessTime = moment(currentDate)
+      .tz("America/Chicago")
+      .format("HH:mm");
     setCurrentDate(date);
     setLessTime(lessTime);
-  }, []);
+  }, [studentId]);
 
   const handleModal = () => {
     setshow(false);
+  };
+
+  const zoomTiming = (e) => {
+    const studentId = localStorage.getItem("studentId");
+    let current_time = moment().format("HH:mm a");
+    var travelTime = moment()
+      .add(1, "hours")
+      .format("HH:mm a");
+    // const newDate = new Date();
+    // const sessionTiming = newDate.toLocaleTimeString();
+    // const sessionTimingEnd = parseInt(sessionTiming) + 1;
+
+    Api.patch("/api/v1/upcomingcourse/student/zoom/timing", {
+      studentCourseScheduleId: studentCourseScheduleId,
+      zoomStartTime: e === "open" ? current_time : zoomStartTimeGet,
+      zoomEndTime: current_time ? travelTime : "",
+      // zoomEndTime: e === "close" ? sessionTiming : "",
+      studentId: studentId,
+    }).then((res) => {
+      const ZoomstartTime = res.data.zoomDetails.zoomStartTime;
+      setZoomStartTimeGet(ZoomstartTime);
+    });
+  };
+
+  const showModal = () => {
+    setSessionEndModal(false);
+    setTimeout(() => {
+      setSessionEndModal(true);
+    }, 1000);
   };
 
   return (
@@ -108,28 +154,34 @@ function StudentDashboard() {
       {isLoading ? (
         <Loader />
       ) : (
-        <Container className="mt-5">
-          <Row className="main-card py-3">
-            <DashboardTiles label="Active Enroll Courses" count={data.activeCourse} url="#" />
+        <Container>
+          <Row className="main-card pb-3">
+            <DashboardTiles
+              label="Active Enrolled Courses"
+              count={data.activeCourse}
+              url="/active/enroll/course/list"
+            />
 
-            <DashboardTiles label="Completed Courses" count={data.completedCourse} url="#" />
+            <DashboardTiles label="Completed Courses" count={data.completeCourse} url="/completed/course/list" />
           </Row>
 
-          <div>
-            <div className="d-flex justify-content-center align-items-center ">
-              <h4>Upcoming Schedule List</h4>
+          <div className="mt-3">
+            <div className="d-flex justify-content-between">
+              <div className="ms-1 mt-2">
+                <h4>Upcoming Schedule</h4>
+              </div>
+              <div>
+                <Button
+                  variant="primary"
+                  className="Kharpi-save-btn me-2 px-3"
+                  onClick={() => history.push("/course/search")}
+                >
+                  Enroll
+                </Button>
+              </div>
             </div>
-            <div className="enroll-link">
-              <Button
-                variant="primary"
-                className="dashboard-button-style"
-                onClick={() => history.push("/landing-page")}
-              >
-                Enroll
-              </Button>
-            </div>
-            <Row className="studentdash-two ">
-              <Table striped bordered hover className="student-table">
+            <Row className="mt-0" style={{ minHeight: "227px" }}>
+              <Table striped bordered hover className="student-table" responsive>
                 <thead>
                   <tr className="viewRow">
                     <th>S.No</th>
@@ -150,7 +202,7 @@ function StudentDashboard() {
                         <td>{list?.lessonDate}</td>
                         <td>{list?.courseScheduleId?.startTime}</td>
                         <td>{list?.courseScheduleId?.endTime}</td>
-                        <td>{list?.courseId?.name}</td>
+                        <td className="linkColor">{list?.courseId?.name}</td>
                         <td>{list?.courseLessonId?.lessonName}</td>
                         <td>{list?.courseId?.duration + " hour"}</td>
                         <td>
@@ -161,14 +213,15 @@ function StudentDashboard() {
                                 : "zoom-view-disable-style"
                             }`}
                             onClick={() => {
-                              if (list?.lessonDate === CurrentDate && list.courseScheduleId.zoomTime <= lessTime) {
-                                setshow(true);
-                                setIsStudent(true);
-                                setZoomLink(list?.courseScheduleId);
-                              } else {
-                                setshowAlert(true);
-                                setDateAndTime(list);
-                              }
+                              setStudentCourseScheduleId(list.id);
+                              // if (list?.lessonDate === CurrentDate && list.courseScheduleId.zoomTime <= lessTime) {
+                              setshow(true);
+                              setIsStudent(true);
+                              setZoomLink(list?.courseLessonId);
+                              // } else {
+                              //   setshowAlert(true);
+                              //   setDateAndTime(list);
+                              // }
                             }}
                           >
                             Join
@@ -178,7 +231,7 @@ function StudentDashboard() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="8">
+                      <td colSpan="8" className="colspan-data-alignment">
                         <h6 className="d-flex justify-content-center">No Records To Display</h6>
                       </td>
                     </tr>
@@ -204,54 +257,51 @@ function StudentDashboard() {
 
           {isStudent ? (
             <div>
-              <Modal show={show} centered onHide={() => handleModal()}>
-                <Modal.Body id="contained-modal-title-vcenter">
+              <Modal show={show} centered backdrop="static">
+                <Modal.Header className="border-bottom-0 pb-0" />
+                <Modal.Body id="contained-modal-title-vcenter" className="zoom-modal-popup pt-0">
                   <div className="align-items-center zoom-content">
-                    <h4 className="mt-2">Zoom Link</h4>
-                    <Row className="my-3 zoom-modal-style">
-                      <h6 className="d-block">Link</h6>
-                      <Col sm={10} className="copy-content">
-                        <Link
-                          className="link-text"
-                          rel="noopener noreferrer"
-                          target="_blank"
-                          onClick={() => window.open(`${ZoomLink?.zoomId}+${ZoomLink?.zoomPassword}`, "_blank")}
-                        >
-                          {ZoomLink?.zoomId}
-                        </Link>
-                      </Col>
-                      <Col sm={2} className="d-flex justify-content-center align-items-center">
-                        <div>
-                          <CopyToClipboard
-                            text={ZoomLink?.zoomId}
-                            className="mx-1 copy-icon"
-                            onCopy={() => toast.success("Link Copied...")}
-                          >
-                            <FontAwesomeIcon icon={faCopy} size="lg" color="#397ad4" />
-                          </CopyToClipboard>
-                        </div>
-                      </Col>
-                    </Row>
-                    <Row className="mb-3 zoom-modal-style">
-                      <h6 className="d-block">Password</h6>
-                      <br />
-                      <Col sm={10} className="copy-content">
-                        <Link className="link-text text-decoration-none" style={{ fontSize: 14 }}>
-                          {ZoomLink?.zoomPassword}
-                        </Link>
-                      </Col>
-                      <Col sm={2} className="d-flex justify-content-center align-items-center">
-                        <div>
-                          <CopyToClipboard
-                            text={ZoomLink?.zoomPassword}
-                            className="mx-1 copy-icon"
-                            onCopy={() => toast.success("Password Copied...")}
-                          >
-                            <FontAwesomeIcon icon={faCopy} size="lg" color="#397ad4" />
-                          </CopyToClipboard>
-                        </div>
-                      </Col>
-                    </Row>
+                    <h4 className="mt-2">Are you sure to start the Zoom class...!</h4>
+                    <div className="d-flex mt-4 ">
+                      <Button
+                        variant="outline-secondary"
+                        className="px-4 mx-2 Kharpi-cancel-btn"
+                        onClick={() => handleModal()}
+                      >
+                        NO
+                      </Button>
+                      <Button
+                        variant="info"
+                        className="zoom-start-btn mx-2 px-4 "
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        onClick={() => {
+                          zoomTiming("open");
+                          setshow(false);
+                          showModal();
+                          window.open(`${ZoomLink?.zoomId}+${ZoomLink?.zoomPassword}`, "_blank");
+                        }}
+                      >
+                        YES
+                      </Button>
+                    </div>
+                  </div>
+                </Modal.Body>
+              </Modal>
+              <Modal show={sessionEndModal} centered backdrop="static">
+                <Modal.Header className="border-bottom-0 pb-0" />
+                <Modal.Body id="contained-modal-title-vcenter" className="zoom-modal-popup pt-0">
+                  <div className="align-items-center zoom-content">
+                    <h4 className="mt-2">Session has ended...!</h4>
+                    <Button
+                      className="create-active mt-3 px-4"
+                      onClick={() => {
+                        // zoomTiming("close");
+                        setSessionEndModal(false);
+                      }}
+                    >
+                      OK
+                    </Button>
                   </div>
                 </Modal.Body>
               </Modal>
@@ -268,7 +318,7 @@ function StudentDashboard() {
                 </div>
                 <Row>
                   <Col>
-                    <Button className="delete-cancel" variant="light" onClick={() => closeShow()}>
+                    <Button className="delete-cancel Kharpi-save-btn" variant="light" onClick={() => closeShow()}>
                       OK
                     </Button>
                   </Col>
@@ -276,6 +326,31 @@ function StudentDashboard() {
               </div>
             </Modal.Body>
           </Modal>
+          {/* <Modal show={sessionOpen} className="p-4" centered backdrop="static">
+            <Modal.Header className="border-bottom-0 pb-0" />
+            <h4 className="text-center">Are you sure to start the session...!</h4>
+            <Row>
+              <Col className=" mt-4 justify-content-center">
+                <Button variant="outline-secondary px-4 me-2" onClick={() => handleModal()}>
+                  NO
+                </Button>
+                <Button
+                  variant="info"
+                  className="px-4"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                  onClick={() => {
+                    zoomTiming("open");
+                    setshow(false);
+                    showModal();
+                    window.open(`${ZoomLink?.zoomId}+${ZoomLink?.zoomPassword}`, "_blank");
+                  }}
+                >
+                  YES
+                </Button>
+              </Col>
+            </Row>
+          </Modal> */}
         </Container>
       )}
     </div>

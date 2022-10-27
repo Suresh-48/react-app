@@ -6,6 +6,7 @@ import { ThemeProvider } from "@material-ui/styles";
 import { createTheme } from "@material-ui/core/styles";
 import { Tab, Tabs } from "@material-ui/core";
 import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
 
 // Component
 import Loader from "../core/Loader";
@@ -39,13 +40,22 @@ function TeacherQuizReview(props) {
   const [isLoading, setisLoading] = useState(true);
   const [value, setValue] = useState(0);
   const [completeData, setcompeleteData] = useState();
+  const token = localStorage.getItem("sessionId");
 
   const history = useHistory();
+
+  //logout
+  const logout = () => {
+     setTimeout(() => {
+       localStorage.clear(history.push("/kharpi"));
+       window.location.reload();
+     }, 2000);
+  };
 
   // Column Heading
   const columns = [
     {
-      title: "S.no",
+      title: "S.No",
       width: "10%",
       render: (rowData) => `${rowData?.tableData?.id + 1}`,
     },
@@ -55,11 +65,22 @@ function TeacherQuizReview(props) {
     },
     {
       title: "Student Name",
-      render: (rowData) => `${rowData.studentId.firstName + " " + rowData.studentId.lastName}`,
+      render: (rowData) => `${rowData.studentId.firstName} ${rowData.studentId.lastName}`,
     },
     {
       title: "Course Name",
       field: "courseId.name",
+      render: (rowData) => (
+        <Link
+          className="linkColor"
+          to={{
+            pathname: `/course/detail/${rowData.courseId?.aliasName}`,
+            state: { courseId: rowData.id },
+          }}
+        >
+          {rowData.courseId.name}
+        </Link>
+      ),
     },
     {
       title: "Lesson Name",
@@ -87,6 +108,7 @@ function TeacherQuizReview(props) {
     Api.get("api/v1/quizSchedule/review/pending", {
       params: {
         teacherId: teacher,
+        token: token,
       },
     })
       .then((response) => {
@@ -108,6 +130,12 @@ function TeacherQuizReview(props) {
           }
           toast.error(error.response.data.message);
         }
+
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
       });
   };
 
@@ -116,6 +144,7 @@ function TeacherQuizReview(props) {
     Api.get("api/v1/quizSchedule/review/completed", {
       params: {
         teacherId: teacher,
+        token: token,
       },
     })
       .then((response) => {
@@ -137,6 +166,11 @@ function TeacherQuizReview(props) {
           }
           toast.error(error.response.data.message);
         }
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
       });
   };
   return (
@@ -149,6 +183,7 @@ function TeacherQuizReview(props) {
             <Tabs
               value={value}
               indicatorColor="primary"
+              variant="fullWidth"
               onChange={(event, newValue) => {
                 setValue(newValue);
               }}
@@ -161,7 +196,7 @@ function TeacherQuizReview(props) {
                     </Col>
                   </Row>
                 }
-                style={{ width: "50%" }}
+                style={{ minWidth: "50%" }}
                 value={0}
               />
               <Tab
@@ -172,71 +207,86 @@ function TeacherQuizReview(props) {
                     </Col>
                   </Row>
                 }
-                style={{ width: "55%" }}
+                style={{ minWidth: "50%" }}
                 value={1}
               />
             </Tabs>
             <hr />
             {value === 0 ? (
-              <div>
-                <h5 className="d-flex justify-content-center align-items-center py-3">Review Pending List</h5>
-                <ThemeProvider theme={tableTheme}>
-                  <MaterialTable
-                    icons={tableIcons}
-                    data={data}
-                    actions={[
-                      {
-                        icon: () => <FontAwesomeIcon icon={faClipboardList} size="sm" color="#397ad4" />,
-                        tooltip: "Review Quiz",
-                        onClick: (event, rowData) => {
-                          history.push("/quiz/review", rowData);
+              <div className="mb-3">
+                <h5 className="py-3">Quiz Pending List</h5>
+                <div className="material-table-responsive">
+                  <ThemeProvider theme={tableTheme}>
+                    <MaterialTable
+                      icons={tableIcons}
+                      data={data}
+                      actions={[
+                        {
+                          icon: () => <FontAwesomeIcon icon={faClipboardList} size="sm" color="#375474" />,
+                          tooltip: "Review Quiz",
+                          onClick: (event, rowData) => {
+                            history.push("/quiz/review", rowData);
+                          },
                         },
-                      },
-                    ]}
-                    options={{
-                      actionsColumnIndex: -1,
-                      addRowPosition: "last",
-                      headerStyle: {
-                        fontWeight: "bold",
-                        backgroundColor: "#CCE6FF",
-                        zIndex: 0,
-                      },
-                      showTitle: false,
-                    }}
-                    columns={columns}
-                    localization={{
-                      body: {
-                        emptyDataSourceMessage: "No Pending Reviews are Available",
-                      },
-                    }}
-                  />
-                </ThemeProvider>
+                      ]}
+                      options={{
+                        actionsColumnIndex: -1,
+                        addRowPosition: "last",
+                        headerStyle: {
+                          fontWeight: "bold",
+                          backgroundColor: "#1d1464",
+                          color: "white",
+                          zIndex: 0,
+                        },
+                        showTitle: false,
+                      }}
+                      columns={columns}
+                      localization={{
+                        body: {
+                          emptyDataSourceMessage: "No Pending Reviews are Available",
+                        },
+                      }}
+                    />
+                  </ThemeProvider>
+                </div>
               </div>
             ) : (
-              <div>
-                <h5 className="d-flex justify-content-center align-items-center py-3">Review Completed List</h5>
-                <ThemeProvider theme={tableTheme}>
-                  <MaterialTable
-                    icons={tableIcons}
-                    data={completeData}
-                    options={{
-                      actionsColumnIndex: -1,
-                      addRowPosition: "last",
-                      headerStyle: {
-                        fontWeight: "bold",
-                        backgroundColor: "#CCE6FF",
-                        zIndex: 0,
-                      },
-                      showTitle: false,
-                    }}
-                    columns={columns}
-                    localization={{
-                      body: {
-                        emptyDataSourceMessage: "No Completed Review",
-                      },
-                    }}
-                  />
-                </ThemeProvider>
+              <div className="mb-3">
+                <h5 className="py-3"> Reviewed Quiz List</h5>
+                <div className="material-table-responsive">
+                  <ThemeProvider theme={tableTheme}>
+                    <MaterialTable
+                      icons={tableIcons}
+                      data={completeData}
+                      actions={[
+                        {
+                          icon: () => <FontAwesomeIcon icon={faClipboardList} size="sm" color="#375474" />,
+                          tooltip: "Edit Reviewed Quiz",
+                          onClick: (event, rowData) => {
+                            history.push("/quiz/reviewed/edit", rowData);
+                          },
+                        },
+                      ]}
+                      options={{
+                        actionsColumnIndex: -1,
+                        addRowPosition: "last",
+                        headerStyle: {
+                          fontWeight: "bold",
+                          backgroundColor: "#1d1464",
+                          color: "white",
+                          zIndex: 0,
+                        },
+                        showTitle: false,
+                      }}
+                      columns={columns}
+                      localization={{
+                        body: {
+                          emptyDataSourceMessage: "No Completed Review",
+                        },
+                      }}
+                    />
+                  </ThemeProvider>
+                </div>
               </div>
             )}
           </div>

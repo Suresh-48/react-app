@@ -12,8 +12,8 @@ import Api from "../../Api";
 import "../../css/createQuiz.scss";
 
 // icons
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPen } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPen } from "@fortawesome/free-solid-svg-icons";
 
 class CreateHomework extends Component {
   constructor(props) {
@@ -23,24 +23,54 @@ class CreateHomework extends Component {
       lessonId: this.props?.location?.state?.lessonId,
       json: undefined,
       isSubmit: false,
+      quizDetail: 0,
     };
   }
 
   componentDidMount() {
+    this.lessonHomeworkDetail();
     const creatorOptions = {
       questionTypes: ["text", "checkbox", "radiogroup", "file", "boolean"],
     };
-    this.surveyCreator = new SurveyJSCreator.SurveyCreator(
-      null,
-      creatorOptions
-    );
+    this.surveyCreator = new SurveyJSCreator.SurveyCreator(null, creatorOptions);
     this.surveyCreator.showState = true;
+    this.surveyCreator.showTestSurveyTab = false;
+    this.surveyCreator.showJSONEditorTab = false;
     this.surveyCreator.saveSurveyFunc = this.saveMySurvey;
     if (this.state.json !== undefined) {
       this.surveyCreator.json = this.state.json;
     }
     this.surveyCreator.render("surveyCreatorContainer");
   }
+
+  // Log out
+  logout = () => {
+    setTimeout(() => {
+      localStorage.clear(this.props.history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
+
+  lessonHomeworkDetail = () => {
+    const token = localStorage.getItem("sessionId");
+    Api.get("api/v1/homework/lesson/detail", {
+      params: {
+        courseLessonId: this.state.lessonId,
+        token: token,
+      },
+    })
+      .then((res) => {
+        const data = res.data.lessonData;
+        this.setState({ quizDetail: data.length });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+            this.logout();
+          toast.error("Session Timeout");
+        }
+      });
+  };
 
   saveMySurvey = (saveNo, callback) => {
     this.setState({ isSubmit: true });
@@ -51,15 +81,25 @@ class CreateHomework extends Component {
         courseId: this.state.courseId,
         courseLessonId: this.state.lessonId,
         questions: jsonData,
-      }).then((response) => {
-        if (response.status === 201) {
-          toast.success("Questions Created Successfully!.");
-          this.setState({ isSubmit: false });
-        } else {
-          toast.error(response.data.message);
-          this.setState({ isSubmit: false });
-        }
-      });
+      })
+        .then((response) => {
+          if (response.status === 201) {
+            toast.success("Questions Created Successfully!.");
+            this.setState({ isSubmit: false });
+            this.lessonHomeworkDetail();
+          } else {
+            toast.error(response.data.message);
+            this.setState({ isSubmit: false });
+            this.lessonHomeworkDetail();
+          }
+        })
+        .catch((error) => {
+          const errorStatus = error?.response?.status;
+          if (errorStatus === 401) {
+            this.logout();
+            toast.error("Session Timeout");
+          }
+        });
     } else {
       toast.error("Please Create Questions Before Clicking on Save Survey");
     }
@@ -69,33 +109,31 @@ class CreateHomework extends Component {
   render() {
     return (
       <div>
-        <CourseSideMenu
-          lessonId={this.state.lessonId}
-          courseId={this.state.courseId}
-        />
-        <div className="main">
+        <CourseSideMenu lessonId={this.state.lessonId} courseId={this.state.courseId} />
+        <div>
           <div className="pt-1">
             <h5 className="title">Create Home Work Questions</h5>
           </div>
-          <div className="d-flex justify-content-end">
-            <Button
-              className="create-button-style py-1"
-              variant="contained"
-              color="primary"
-              onClick={() =>
-                this.props.history.push({
-                  pathname: "/homework/edit",
-                  state: {
-                    lessonId: this.state.lessonId,
-                    courseId: this.state.courseId,
-                  },
-                })
-              }
-            >
-              Edit Home Work{" "}
-              <FontAwesomeIcon icon={faPen} size="md" className="ms-3" />
-            </Button>
-          </div>
+          {this.state.quizDetail !== 0 && (
+            <div className="d-flex justify-content-end my-3">
+              <Button
+                className="create-button-style py-1"
+                variant="contained"
+                color="primary"
+                onClick={() =>
+                  this.props.history.push({
+                    pathname: "/homework/edit",
+                    state: {
+                      lessonId: this.state.lessonId,
+                      courseId: this.state.courseId,
+                    },
+                  })
+                }
+              >
+                Edit Home Work <FontAwesomeIcon icon={faPen} size="md" className="ms-3" />
+              </Button>
+            </div>
+          )}
           <div id="surveyCreatorContainer" />
         </div>
       </div>

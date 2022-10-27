@@ -24,26 +24,17 @@ import "../../css/CourseCreation.scss";
 import Loader from "../core/Loader";
 import CourseSideMenu from "../CourseSideMenu";
 import Label from "../../components/core/Label";
+import { customStyles } from "../core/Selector";
 
 // Validation
 const SignInSchema = Yup.object().shape({
   type: Yup.object().required("Type Name Is Required"),
   category: Yup.object().required("Category Name Is Required"),
   courseName: Yup.string().required("Course Name Is Required"),
-  actualAmount: Yup.string()
-    .matches(
-      /^((\\+[1-9]{1,4}[ \\-]*)|(\\([0-9]{2,3}\\)[ \\-]*)|([0-9]{2,4})[ \\-]*)*?[0-9]{0,4}?[ \\-]*[0-9]{0,4}?$/,
-      "Actual Amount Is Invalid"
-    )
-    .required("Actual Amount Is Required"),
-  discountAmount: Yup.string()
-    .matches(
-      /^((\\+[1-9]{1,4}[ \\-]*)|(\\([0-9]{2,3}\\)[ \\-]*)|([0-9]{2,4})[ \\-]*)*?[0-9]{0,4}?[ \\-]*[0-9]{0,4}?$/,
-      "Discount Amount Is Invalid"
-    )
-    .required("Discount Amount Is Required"),
   courseImage: Yup.mixed().required("Image Is Required"),
-  duration: Yup.object().required("Duration is Required").nullable(),
+  duration: Yup.object()
+    .required("Duration is Required")
+    .nullable(),
 });
 
 export default class EditCourses extends Component {
@@ -73,31 +64,48 @@ export default class EditCourses extends Component {
     };
   }
 
-  // Get Course Data
-  getCourseData = () => {
-    Api.get(`api/v1/course/${this.state.courseId}`).then((response) => {
-      const data = response.data.data;
-      const contentState = convertFromRaw(JSON.parse(data.description));
-      const editorState = EditorState.createWithContent(contentState);
-      const editedText = convertToRaw(editorState.getCurrentContent());
-      this.setState({
-        courseData: data,
-        category: { value: data.category._id, label: data.category.name },
-        type: { value: data.submitType, label: data.submitType },
-        isFuture: data.isFuture,
-        categoryId: data.category._id,
-        imagePreview: data.imageUrl,
-        typeId: data.submitType,
-        duration: { value: data.duration, label: data.duration },
-        durationValue: data.duration,
-        isLoading: false,
-        description: editorState,
-        descriptionValue: editedText.blocks[0].text,
-      });
-    });
+  //logout
+  logout = () => {
+    setTimeout(() => {
+      localStorage.clear(this.props.history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
   };
 
-  onChangeDescription = (e) => {
+  // Get Course Data
+  getCourseData = () => {
+    const token = localStorage.getItem("sessionId");
+    Api.get(`api/v1/course/${this.state.courseId}`, { headers: { token: token } })
+      .then((response) => {
+        const data = response.data.data;
+        const contentState = convertFromRaw(JSON.parse(data.description));
+        const editorState = EditorState.createWithContent(contentState);
+        const editedText = convertToRaw(editorState.getCurrentContent());
+        this.setState({
+          courseData: data,
+          category: { value: data?.category?._id, label: data?.category?.name },
+          type: { value: data.submitType, label: data.submitType },
+          isFuture: data.isFuture,
+          categoryId: data?.category?._id,
+          imagePreview: data.imageUrl,
+          typeId: data.submitType,
+          duration: { value: data.duration, label: data.duration },
+          durationValue: data.duration,
+          isLoading: false,
+          description: editorState,
+          descriptionValue: editedText.blocks[0].text,
+        });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
+      });
+  };
+
+  onChangeDescription = (setFieldValue, e) => {
     const editedText = convertToRaw(e.getCurrentContent());
     this.setState({ descriptionValue: editedText.blocks[0].text });
   };
@@ -109,10 +117,23 @@ export default class EditCourses extends Component {
 
   // Get category
   getCategory = () => {
-    Api.get("api/v1/category").then((res) => {
-      const option = res.data.data.data;
-      this.setState({ options: option });
-    });
+    const token = localStorage.getItem("sessionId");
+    Api.get("api/v1/category", {
+      headers: {
+        token: token,
+      },
+    })
+      .then((res) => {
+        const option = res.data.data.data;
+        this.setState({ options: option });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
 
   handleModal() {
@@ -122,17 +143,17 @@ export default class EditCourses extends Component {
   // Submit form
   submitForm = (values) => {
     const convertedData = JSON.stringify(convertToRaw(this.state.description.getCurrentContent()));
+    const token = localStorage.getItem("sessionId");
     this.setState({ isSubmit: true });
     Api.patch("api/v1/course/" + this.state.courseId, {
       id: this.state.courseId,
       category: this.state.categoryId,
       name: values.courseName,
       description: convertedData,
-      actualAmount: values.actualAmount,
-      discountAmount: values.discountAmount,
       type: this.state.typeId,
       isFuture: this.state.isFuture,
       duration: this.state.durationValue,
+      token: token,
     })
       .then((response) => {
         const status = response.status;
@@ -143,26 +164,53 @@ export default class EditCourses extends Component {
             if (image === this.state.courseData.imageUrl) {
               Api.patch("api/v1/course/image/update/" + this.state.courseId, {
                 imageUrl: image,
-              }).then((res) => {
-                toast.success("Updated");
-                this.setState({ isSubmit: false });
-              });
+                token: token,
+              })
+                .then((res) => {
+                  toast.success("Updated");
+                  this.setState({ isSubmit: false });
+                })
+                .catch((error) => {
+                  const errorStatus = error?.response?.status;
+                  if (errorStatus === 401) {
+                    this.logout();
+                    toast.error("Session Timeout");
+                  }
+                });
             } else {
               Api.patch("api/v1/course/image/upload", {
                 courseId: this.state.courseId,
                 image: this.state.imagePreview,
-              }).then((res) => {
-                toast.success("Updated");
-                this.setState({ isSubmit: false });
-              });
+                token: token,
+              })
+                .then((res) => {
+                  toast.success("Updated");
+                  this.setState({ isSubmit: false });
+                })
+                .catch((error) => {
+                  const errorStatus = error?.response?.status;
+                  if (errorStatus === 401) {
+                    this.logout();
+                    toast.error("Session Timeout");
+                  }
+                });
             }
           } else {
             Api.patch("api/v1/course/image/update/" + this.state.courseId, {
               imageUrl: null,
-            }).then((res) => {
-              toast.success("Updated");
-              this.setState({ isSubmit: false });
-            });
+              token: token,
+            })
+              .then((res) => {
+                toast.success("Updated");
+                this.setState({ isSubmit: false });
+              })
+              .catch((error) => {
+                const errorStatus = error?.response?.status;
+                if (errorStatus === 401) {
+                  this.logout();
+                  toast.error("Session Timeout");
+                }
+              });
           }
         } else {
           this.setState({ isSubmit: false });
@@ -179,14 +227,21 @@ export default class EditCourses extends Component {
           toast.error(error.response.data.message);
           this.setState({ isSubmit: false });
         }
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
       });
   };
 
   // Create Category
   createCategory = () => {
+    const token = localStorage.getItem("sessionId");
     this.setState({ isSubmit: true });
     Api.post("api/v1/category", {
       name: this.state.selectCategory,
+      token: token,
     })
       .then((response) => {
         const status = response.status;
@@ -253,18 +308,18 @@ export default class EditCourses extends Component {
     const { courseData, isLoading } = this.state;
 
     return (
-      <Container>
+      <Container className="mt-1">
         <CourseSideMenu courseId={this.state.courseId} aliasName={this.state.aliasName} />
-        <div className="row main">
+        <div className="row edit-course-lesson-style mt-4 mx-0">
           {isLoading ? (
             <Loader />
           ) : (
             <div>
-              <div className="d-flex justify-content-center align-items-center mt-1">
+              {/* <div className="d-flex justify-content-center align-items-center mt-1">
                 <FontAwesomeIcon icon={faBookOpen} size="3x" color="#1d1464" />
-              </div>
-              <div className="d-flex justify-content-center align-items-center mt-1">
-                <h2>Edit Course </h2>
+              </div> */}
+              <div className="mt-3 mt-1">
+                <h4>Edit Course </h4>
               </div>
               <div className="col-sm-12">
                 <Formik
@@ -274,8 +329,6 @@ export default class EditCourses extends Component {
                     courseName: courseData.name,
                     description: "",
                     descriptionValue: this.state.descriptionValue,
-                    actualAmount: courseData.actualAmount,
-                    discountAmount: courseData.discountAmount,
                     type: this.state.type,
                     duration: this.state.duration,
                     courseImage: this.state.imagePreview,
@@ -289,11 +342,12 @@ export default class EditCourses extends Component {
                       <Row>
                         <Form onSubmit={handleSubmit}>
                           <Row>
-                            <Col md={7}>
+                            <Col xs={12} sm={12} md={7}>
                               <Form.Group className="form-row mb-3">
                                 <Label notify={true}>Category</Label>
 
                                 <Select
+                                  styles={customStyles}
                                   value={values.category}
                                   placeholder="Select Category"
                                   name="category"
@@ -322,7 +376,7 @@ export default class EditCourses extends Component {
                                       isdisabled: true,
                                     },
                                     {
-                                      options: this.state.options.map((list) => ({
+                                      options: this?.state?.options?.map((list) => ({
                                         value: list.id,
                                         label: list.name,
                                         isdisabled: true,
@@ -362,7 +416,7 @@ export default class EditCourses extends Component {
                                     editorState={this.state.description}
                                     onEditorStateChange={(e) => {
                                       this.setState({ description: e });
-                                      this.onChangeDescription.bind(this, setFieldValue, e);
+                                      this.onChangeDescription(setFieldValue, e);
                                     }}
                                     toolbar={{
                                       options: ["inline", "list", "textAlign"],
@@ -373,59 +427,7 @@ export default class EditCourses extends Component {
                                   <p className="error text-danger">Description Is Required</p>
                                 )}
                               </div>
-                              <div className="row mb-3">
-                                <Col xs={12} sm={6}>
-                                  <Form.Group className="form-row" style={{ marginRight: 20, width: "100%" }}>
-                                    <Label notify={true}>Actual Amount</Label>
-                                    <InputGroup className="input-group ">
-                                      <InputGroup.Text>
-                                        <FontAwesomeIcon icon={faDollarSign} size="1x" />
-                                      </InputGroup.Text>
-                                      <FormControl
-                                        type="type"
-                                        placeholder="Course Actual Amount"
-                                        name="actualAmount"
-                                        id="actualAmount"
-                                        value={values.actualAmount}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        className="form-styles"
-                                      />
-                                    </InputGroup>
-                                    <ErrorMessage
-                                      name="actualAmount"
-                                      component="span"
-                                      className="error text-danger error-message"
-                                    />
-                                  </Form.Group>
-                                </Col>
-                                <Col xs={12} sm={6}>
-                                  <Form.Group className="form-row " style={{ width: "100%" }}>
-                                    <Label notify={true}>Discount Amount</Label>
-                                    <br />
-                                    <InputGroup className="input-group ">
-                                      <InputGroup.Text>
-                                        <FontAwesomeIcon icon={faDollarSign} size="1x" />
-                                      </InputGroup.Text>
-                                      <FormControl
-                                        type="type"
-                                        placeholder="Course Discount Amount"
-                                        name="discountAmount"
-                                        id="discountAmount"
-                                        value={values.discountAmount}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        className="form-styles"
-                                      />
-                                    </InputGroup>
-                                    <ErrorMessage
-                                      name="discountAmount"
-                                      component="span"
-                                      className="error text-danger error-message"
-                                    />
-                                  </Form.Group>
-                                </Col>
-                              </div>
+
                               <div className="row mb-3">
                                 <Col xs={12} sm={6} md={6}>
                                   <Form.Group className="form-row" style={{ marginRight: 20, width: "100%" }}>
@@ -433,6 +435,7 @@ export default class EditCourses extends Component {
                                     <br />
                                     <Select
                                       value={values.type}
+                                      styles={customStyles}
                                       placeholder="Select Status"
                                       name="type"
                                       onChange={(e) => {
@@ -461,6 +464,7 @@ export default class EditCourses extends Component {
                                     <Label notify={true}>Durations</Label>
                                     <Select
                                       name="duration"
+                                      styles={customStyles}
                                       value={values.duration}
                                       onChange={(e) => {
                                         setFieldValue("duration", e);
@@ -478,7 +482,7 @@ export default class EditCourses extends Component {
                                 </Col>
                               </div>
                               <div>
-                                <Col xs={12} sm={6} md={6} className="d-flex justify-content-start align-items-center">
+                                <Col className="d-flex justify-content-start align-items-center">
                                   <Form.Group className="form-row">
                                     <Form.Check
                                       className="checkbox-style mt-0"
@@ -495,10 +499,10 @@ export default class EditCourses extends Component {
                                 </Col>
                               </div>
                             </Col>
-                            <Col md={5}>
+                            <Col xs={12} sm={12} md={5}>
                               <Row>
                                 <div className="d-flex justify-content-center  ">
-                                  <label class="file-upload">
+                                  <label className="file-upload">
                                     <input
                                       type="file"
                                       name="courseImage"
@@ -509,7 +513,7 @@ export default class EditCourses extends Component {
                                         this.selectFile(e, { setFieldValue });
                                       }}
                                     />
-                                    {this.state.imagePreview ? "Change File" : "Choose File"}
+                                    {this.state.imagePreview ? "Change Image" : "Upload Image"}
                                   </label>
                                 </div>
                                 <div>
@@ -564,20 +568,22 @@ export default class EditCourses extends Component {
                                 </div>
                               </Row>
                             </Col>
-                            <Row className="d-flex justify-content-end align-items-center  mb-4 mt-3">
-                              <Button
-                                type="submit"
-                                disabled={!isValid || this.state.isSubmit || this.state.descriptionValue === ""}
-                                fullWidth
-                                variant="contained"
-                                className={`${
-                                  !isValid || this.state.isSubmit || this.state.descriptionValue === ""
-                                    ? "save-changes-disable"
-                                    : "save-changes-active"
-                                }`}
-                              >
-                                SAVE CHANGES
-                              </Button>
+                            <Row className=" mb-4 mt-3">
+                              <Col className="d-flex justify-content-end ">
+                                <button
+                                  type="submit"
+                                  disabled={!isValid || this.state.isSubmit || this.state.descriptionValue === ""}
+                                  variant="contained"
+                                  // style={{ width: "30%" }}
+                                  className={`${
+                                    !isValid || this.state.isSubmit || this.state.descriptionValue === ""
+                                      ? "save-changes-disable font-weight-bold py-2 px-3"
+                                      : "save-changes-active font-weight-bold py-2 px-3"
+                                  }`}
+                                >
+                                  SAVE CHANGES
+                                </button>
+                              </Col>
                             </Row>
                           </Row>
                         </Form>
@@ -615,7 +621,7 @@ export default class EditCourses extends Component {
                             <Button
                               type="submit"
                               fullWidth
-                              variant="contained"
+                              className="Kharpi-cancel-btn"
                               color="#fff"
                               style={{ width: "100%", borderRadius: 5 }}
                               onClick={() => this.handleModal()}

@@ -10,6 +10,8 @@ import Api from "../../Api";
 // Component
 import Loader from "../core/Loader";
 import { tableIcons } from "../core/TableIcons";
+import { useHistory } from "react-router-dom";
+import { toast } from "react-toastify";
 
 // Style
 const tableTheme = createTheme({
@@ -28,20 +30,34 @@ const tableTheme = createTheme({
 function CourseCategory(props) {
   const [isLoading, setisLoading] = useState(true);
   const [category, setcategory] = useState([]);
+  const token = localStorage.getItem("sessionId");
+  const history = useHistory();
+
+  // Log out
+  const logout = () => {
+    setTimeout(() => {
+      localStorage.clear(history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
 
   // Column Heading
   const columns = [
     {
-      title: "S.no",
-      width: "10%",
+      title: "S.No",
       render: (rowData) => `${rowData?.tableData?.id + 1}`,
     },
     {
       title: "Category Name",
-      field: "category.name",
-      cellStyle: {
-        cellWidth: "15%",
-      },
+      field: "name",
+    },
+    {
+      title: "Created By",
+      render: (rowData) => (rowData.createdBy ? `${rowData.createdBy.firstName} ${rowData.createdBy.lastName}` : null),
+    },
+    {
+      title: "Created At",
+      field: "createdAt",
     },
   ];
 
@@ -51,11 +67,19 @@ function CourseCategory(props) {
 
   // Get Course Category
   const courseCategoryData = () => {
-    Api.get("api/v1/course").then((res) => {
-      const data = res.data.data.data;
-      setcategory(data);
-      setisLoading(false);
-    });
+    Api.get("api/v1/category/list", { headers: { token: token } })
+      .then((res) => {
+        const data = res?.data?.data;
+        setcategory(data);
+        setisLoading(false);
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
 
   return (
@@ -63,12 +87,12 @@ function CourseCategory(props) {
       {isLoading ? (
         <Loader />
       ) : (
-        <Container className="my-5">
-          <div className="d-flex justify-content-center align-items-center py-3">
-            <h5>Course Category List</h5>
+        <Container className="mb-5">
+          <div className="py-3">
+            <h5>Course Category</h5>
           </div>
           <ThemeProvider theme={tableTheme}>
-            <div>
+            <div className="material-table-responsive">
               <MaterialTable
                 icons={tableIcons}
                 data={category}
@@ -78,7 +102,8 @@ function CourseCategory(props) {
                   addRowPosition: "last",
                   headerStyle: {
                     fontWeight: "bold",
-                    backgroundColor: "#CCE6FF",
+                    backgroundColor: "#1d1464",
+                    color: "white",
                     zIndex: 0,
                   },
                   showTitle: false,

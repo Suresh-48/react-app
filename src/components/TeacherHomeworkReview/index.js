@@ -6,6 +6,7 @@ import { createTheme } from "@material-ui/core/styles";
 import MaterialTable from "material-table";
 import { toast } from "react-toastify";
 import { Tab, Tabs } from "@material-ui/core";
+import { Link } from "react-router-dom";
 
 // Icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -37,13 +38,14 @@ function TeacherHomeworkReview(props) {
   const [value, setValue] = useState(0);
   const [completeData, setcompeleteData] = useState();
   const [teacherId, setTeacherId] = useState();
+  const token = localStorage.getItem("sessionId");
 
   const history = useHistory();
 
   // Column Heading
   const columns = [
     {
-      title: "S.no",
+      title: "S.No",
       render: (rowData) => `${rowData?.tableData?.id + 1}`,
     },
     {
@@ -52,11 +54,22 @@ function TeacherHomeworkReview(props) {
     },
     {
       title: "Student Name",
-      render: (rowData) => `${rowData.studentId.firstName + " " + rowData.studentId.lastName}`,
+      render: (rowData) => `${rowData.studentId.firstName}  ${rowData.studentId.lastName}`,
     },
     {
       title: "Course Name",
       field: "courseId.name",
+      render: (rowData) => (
+        <Link
+          className="linkColor"
+          to={{
+            pathname: `/course/detail/${rowData.courseId?.aliasName}`,
+            state: { courseId: rowData.id },
+          }}
+        >
+          {rowData.courseId.name}
+        </Link>
+      ),
     },
     {
       title: "Lesson Name",
@@ -79,11 +92,20 @@ function TeacherHomeworkReview(props) {
     getCompletedReviewList(teacherId);
   }, []);
 
+  //logout
+  const logout = () => {
+    setTimeout(() => {
+      localStorage.clear(history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
+
   // Get pending Review list
   const getPendingReviewList = (teacher) => {
     Api.get("api/v1/homeworkSchedule/review/pending", {
       params: {
         teacherId: teacher,
+        token: token,
       },
     })
       .then((response) => {
@@ -105,6 +127,11 @@ function TeacherHomeworkReview(props) {
           }
           toast.error(error.response.data.message);
         }
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
       });
   };
 
@@ -113,6 +140,7 @@ function TeacherHomeworkReview(props) {
     Api.get("api/v1/homeworkSchedule/review/completed", {
       params: {
         teacherId: teacher,
+        token: token,
       },
     })
       .then((response) => {
@@ -134,6 +162,11 @@ function TeacherHomeworkReview(props) {
           }
           toast.error(error.response.data.message);
         }
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          logout();
+          toast.error("Session Timeout");
+        }
       });
   };
 
@@ -150,93 +183,108 @@ function TeacherHomeworkReview(props) {
               onChange={(event, newValue) => {
                 setValue(newValue);
               }}
+              variant="fullWidth"
+              aria-label="full width tabs example"
             >
               <Tab
                 label={
                   <Row>
                     <Col>
-                      <p className="tab-titles">PENDING REVIEW LIST </p>
+                      <p className="tab-titles">Pending Review</p>
                     </Col>
                   </Row>
                 }
-                style={{ width: "50%" }}
+                style={{ minWidth: "50%" }}
                 value={0}
               />
               <Tab
                 label={
                   <Row>
                     <Col>
-                      <p className="tab-titles">COMPLETED REVIEW LIST</p>
+                      <p className="tab-titles">Completed Review</p>
                     </Col>
                   </Row>
                 }
-                style={{ width: "55%" }}
+                style={{ minWidth: "50%" }}
                 value={1}
               />
             </Tabs>
             <hr />
             {value === 0 ? (
-              <div>
-                <h5 className="d-flex justify-content-center align-items-center py-3">Pending Home Work Review List</h5>
-                <ThemeProvider theme={tableTheme}>
-                  <MaterialTable
-                    icons={tableIcons}
-                    data={data}
-                    options={{
-                      actionsColumnIndex: -1,
-                      addRowPosition: "last",
-                      headerStyle: {
-                        fontWeight: "bold",
-                        backgroundColor: "#CCE6FF",
-                        zIndex: 0,
-                      },
-                      showTitle: false,
-                    }}
-                    columns={columns}
-                    localization={{
-                      body: {
-                        emptyDataSourceMessage: "No  Home Work Reviews are Available",
-                      },
-                    }}
-                    actions={[
-                      {
-                        icon: () => <FontAwesomeIcon icon={faClipboardList} size="sm" color="#397AD4" />,
-                        tooltip: "Review Home Work",
-                        onClick: (event, rowData) => {
-                          history.push("/homework/preview", rowData);
+              <div className="mb-3">
+                <h5 className="py-3">Pending Home Work List</h5>
+                <div className="material-table-responsive">
+                  <ThemeProvider theme={tableTheme}>
+                    <MaterialTable
+                      icons={tableIcons}
+                      data={data}
+                      options={{
+                        actionsColumnIndex: -1,
+                        addRowPosition: "last",
+                        headerStyle: {
+                          fontWeight: "bold",
+                          backgroundColor: "#1d1464",
+                          color: "white",
+                          zIndex: 0,
                         },
-                      },
-                    ]}
-                  />
-                </ThemeProvider>
+                        showTitle: false,
+                      }}
+                      columns={columns}
+                      localization={{
+                        body: {
+                          emptyDataSourceMessage: "No  Home Work Reviews are Available",
+                        },
+                      }}
+                      actions={[
+                        {
+                          icon: () => <FontAwesomeIcon icon={faClipboardList} size="sm" color="#375474" />,
+                          tooltip: "Review Home Work",
+                          onClick: (event, rowData) => {
+                            history.push("/homework/review", rowData);
+                          },
+                        },
+                      ]}
+                    />
+                  </ThemeProvider>
+                </div>
               </div>
             ) : (
-              <div>
-                <h5 className="d-flex justify-content-center align-items-center py-3">
-                  Completed Home Work Review List
-                </h5>
-                <ThemeProvider theme={tableTheme}>
-                  <MaterialTable
-                    icons={tableIcons}
-                    data={completeData}
-                    options={{
-                      actionsColumnIndex: -1,
-                      addRowPosition: "last",
-                      headerStyle: {
-                        fontWeight: "bold",
-                        backgroundColor: "#CCE6FF",
-                        zIndex: 0,
-                      },
-                      showTitle: false,
-                    }}
-                    columns={columns}
-                    localization={{
-                      body: {
-                        emptyDataSourceMessage: "No Completed Review List",
-                      },
-                    }}
-                  />
-                </ThemeProvider>
+              <div className="mb-3">
+                <h5 className="py-3">Reviewed Home work List</h5>
+                <div className="material-table-responsive">
+                  <ThemeProvider theme={tableTheme}>
+                    <MaterialTable
+                      icons={tableIcons}
+                      data={completeData}
+                      options={{
+                        actionsColumnIndex: -1,
+                        addRowPosition: "last",
+                        headerStyle: {
+                          fontWeight: "bold",
+                          backgroundColor: "#1d1464",
+                          color: "white",
+                          zIndex: 0,
+                        },
+                        showTitle: false,
+                      }}
+                      actions={[
+                        {
+                          icon: () => <FontAwesomeIcon icon={faClipboardList} size="sm" color="#375474" />,
+                          tooltip: "Edit Reviewed Home Work",
+                          onClick: (event, rowData) => {
+                            history.push("/homework/reviewed/edit", rowData);
+                          },
+                        },
+                      ]}
+                      columns={columns}
+                      localization={{
+                        body: {
+                          emptyDataSourceMessage: "No Completed Review List",
+                        },
+                      }}
+                    />
+                  </ThemeProvider>
+                </div>
               </div>
             )}
           </div>

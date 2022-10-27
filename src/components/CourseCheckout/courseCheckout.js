@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Container, Row, Col, Form, FormControl, Modal, Spinner } from "react-bootstrap";
+import { Container, Row, Col, Form, FormControl, Modal, Spinner, InputGroup } from "react-bootstrap";
 import Select from "react-select";
 import { Formik, ErrorMessage } from "formik";
 import * as Yup from "yup";
@@ -10,6 +10,8 @@ import CardSection from "../core/CardSection";
 // Styles
 import "../../css/CourseCheckout.scss";
 
+import { FaExclamationCircle } from "react-icons/fa";
+
 // Api
 import Api from "../../Api";
 
@@ -19,6 +21,7 @@ import { toast } from "react-toastify";
 import states from "../../components/core/States";
 // Roles
 import { ROLES_PARENT, ROLES_STUDENT } from "../../constants/roles";
+import { customStyles } from "../core/Selector";
 
 const role = localStorage.getItem("role");
 
@@ -29,16 +32,16 @@ const SignInSchema = Yup.object().shape({
   firstName: Yup.string()
     .matches(/^[A-Z]/, "First Letter Must Be In Capital")
     .matches(/^[aA-zZ\s]+$/, "Enter Valid Name")
-    .required("First Name Is Required"),
+    .required("First Name as displayed in Credit Card"),
 
   lastName: Yup.string()
     .matches(/^[A-Z]/, "First Letter Must Be In Capital")
     .matches(/^[aA-zZ\s]+$/, "Enter Valid Name")
-    .required("Last Name Is Required"),
+    .required("Last Name as displayed in Credit Card"),
 
   address1: Yup.string().required("Address 1 Is Required"),
 
-  address2: Yup.string().required("Address 2 Is Required"),
+  address2: Yup.string().nullable(),
 
   state: Yup.object().required("State Is Required"),
 
@@ -50,24 +53,38 @@ const SignInSchema = Yup.object().shape({
       "Enter Valid Zip Code"
     )
     .matches(/^[0-9]{5}$/, "Zip Code Must Be  5 Digits")
-    .required("Zip Code Is Required"),
+    .required("Zip Code Is Required")
+    .nullable(),
 
   phone: Yup.string()
     .matches(/^[0-9\s]+$/, "Enter Valid Phone Number")
+    .min(10, "Enter valid number")
+    .max(10, "Enter valid number")
     .required("Phone Number Is Required"),
 
-  email: Yup.string().email("Enter Valid Email").required("Email Is Required"),
+  email: Yup.string()
+    .email("Enter Valid Email")
+    .required("Email Is Required"),
 
   student: isParent && Yup.object().required("Student Name Is Required"),
 });
+const token = localStorage.getItem("sessionId");
 
 class CourseCheckoutScreen extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      scheduleDetail: this.props?.props?.location?.state?.scheduleDetail
+        ? this.props?.props?.location?.state?.scheduleDetail
+        : this.props?.props?.location?.state?.scheduleId,
       courseId: this.props?.props?.location?.state?.courseId,
-      scheduleId: this.props?.props?.location?.state?.scheduleId,
-      payment: this.props?.props?.location?.state?.coursePayment,
+      scheduleId: this.props?.props?.location?.state?.scheduleId?.id
+        ? this.props?.props?.location?.state?.scheduleId?.id
+        : this.props?.props?.location?.state?.scheduleId,
+      payment: this.props?.props?.location?.state?.coursePayment
+        ? this.props?.props?.location?.state?.coursePayment
+        : this.props?.props?.location?.state?.lessonPayment,
+      lessonIds: this.props?.props?.location?.state?.lessonIds,
       courseTime: "",
       parentId: "",
       cvc: "",
@@ -76,9 +93,11 @@ class CourseCheckoutScreen extends Component {
       name: "",
       number: "",
       student: "",
-      stuedntId: "",
+      studentId: "",
       studentList: [],
       show: false,
+      view: false,
+      errorText: " ",
       isProcessing: true,
       isSubmit: false,
       role: "",
@@ -106,50 +125,76 @@ class CourseCheckoutScreen extends Component {
     };
   }
 
+  // Log out
+  logout = () => {
+    setTimeout(() => {
+      localStorage.clear(this.props.history.push("/kharpi"));
+      window.location.reload();
+    }, 2000);
+  };
+
   // Get Parent Address
   getParentAddress = () => {
+    const token = localStorage.getItem("sessionId");
     const parentId = localStorage.getItem("parentId");
-    Api.get(`api/v1/parent/${parentId}`).then((response) => {
-      const data = response.data.data.getOne;
-      this.setState({
-        parentAddress: data,
-        firstName: data?.firstName,
-        lastName: data?.lastName,
-        address1: data?.address1,
-        address2: data?.address2,
-        phone: data?.phone,
-        email: data?.email,
-        city: data.city ? { value: data?.city, label: data?.city } : "",
-        cityValue: data?.city,
-        state: data.state ? { value: data?.state, label: data?.state } : "",
-        stateValue: data?.state,
-        zipCode: data?.zipCode,
-        isLoading: false,
+    Api.get(`api/v1/parent/${parentId}`, { headers: { token: token } })
+      .then((response) => {
+        const data = response.data.data.getOne;
+        this.setState({
+          parentAddress: data,
+          firstName: data?.firstName,
+          lastName: data?.lastName,
+          address1: data?.address1,
+          address2: data?.address2,
+          phone: data?.phone,
+          email: data?.email,
+          city: data.city ? { value: data?.city, label: data?.city } : "",
+          cityValue: data?.city,
+          state: data.state ? { value: data?.state, label: data?.state } : "",
+          stateValue: data?.state,
+          zipCode: data?.zipCode,
+          isLoading: false,
+        });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
       });
-    });
   };
 
   // Get Student Address
   getStudentAddress = () => {
-    let studentId = localStorage.getItem("studentId");
-    Api.get(`api/v1/student/${studentId}`).then((response) => {
-      const data = response.data.data.getOne;
-      this.setState({
-        studentAddress: data,
-        firstName: data?.firstName,
-        lastName: data?.lastName,
-        address1: data?.address1,
-        address2: data?.address2,
-        phone: data?.phone,
-        email: data?.email,
-        city: data.city ? { value: data?.city, label: data?.city } : "",
-        cityValue: data?.city,
-        state: data.state ? { value: data?.state, label: data?.state } : "",
-        stateValue: data?.state,
-        zipCode: data?.zipCode,
-        isLoading: false,
+    const studentId = localStorage.getItem("studentId");
+    const token = localStorage.getItem("sessionId");
+    Api.get(`api/v1/student/${studentId}`, { headers: { token: token } })
+      .then((response) => {
+        const data = response.data.data.getOne;
+        this.setState({
+          studentAddress: data,
+          firstName: data?.firstName,
+          lastName: data?.lastName,
+          address1: data?.address1,
+          address2: data?.address2,
+          phone: data?.phone,
+          email: data?.email,
+          city: data.city ? { value: data?.city, label: data?.city } : "",
+          cityValue: data?.city,
+          state: data.state ? { value: data?.state, label: data?.state } : "",
+          stateValue: data?.state,
+          zipCode: data?.zipCode,
+          isLoading: false,
+        });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
       });
-    });
   };
 
   // Get userId in local storage and user details
@@ -160,14 +205,24 @@ class CourseCheckoutScreen extends Component {
       courseTime: courseTiming,
       parentId: parentId,
     });
+    const token = localStorage.getItem("sessionId");
     Api.get("api/v1/parent/student/list", {
       params: {
         parentId: parentId,
+        token: token,
       },
-    }).then((res) => {
-      const data = res.data.data.studentList;
-      this.setState({ studentList: data });
-    });
+    })
+      .then((res) => {
+        const data = res.data.data.studentList;
+        this.setState({ studentList: data });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
+      });
   };
 
   componentDidMount() {
@@ -200,95 +255,270 @@ class CourseCheckoutScreen extends Component {
 
     const card = elements.getElement(CardElement);
     const result = await stripe.createToken(card);
+    const token = localStorage.getItem("sessionId");
     if (result.error) {
-      this.setState({ show: false, isSubmit: false });
-      toast.error(result.error.message);
+      this.setState({
+        show: false,
+        isSubmit: false,
+        view: true,
+        errorText: result.error.message,
+      });
+      // toast.error(result.error.message);
     } else {
-      const email = values.email.toLowerCase();
-      Api.post("/api/v1/billing/strip/payment", {
-        currency: "inr",
-        price: this.state.payment * 100,
-        studentId: isParent ? this.state.studentId : userStudentId,
-        courseId: this.state.courseId,
-        courseScheduleId: this.state.scheduleId,
-      })
-        .then(async (resposne) => {
-          const data = resposne.data;
-          const confirmPayment = await stripe.confirmCardPayment(data.clientSecret, {
-            payment_method: {
-              card: card,
-              billing_details: {
-                address: {
-                  city: this.state.cityValue,
-                  country: "us",
-                  line1: values.address1,
-                  line2: values.address2,
-                  postal_code: values.zipCode,
-                  state: this.state.stateValue,
-                },
-                email: email,
-                name: values.firstName,
-                phone: values.phone,
-              },
-            },
-          });
-
-          if (!confirmPayment.error) {
-            Api.post(
-              `api/v1/billing/paybill/${
-                (isStudent && parentId === "null") || (isStudent && parentId === null) ? "student" : "parent"
-              }`,
-              {
-                firstName: values.firstName,
-                lastName: values.lastName,
-                address1: values.address1,
-                address2: values.address2,
-                email: values.email,
-                city: this.state.cityValue,
-                state: this.state.stateValue,
-                zipCode: values.zipCode,
-                phone: values.phone,
-                parentId: this.state.parentId,
-                studentId: isParent ? this.state.studentId : userStudentId,
-                courseId: this.state.courseId,
+      {
+        this.state.lessonIds
+          ? Api.get("api/v1/student/upcomingSchedule/check", {
+              params: {
                 courseScheduleId: this.state.scheduleId,
-                payment: this.state.payment,
-              }
-            ).then((res) => {
-              const status = res.status;
-              if (status === 201) {
-                resetForm({ values: "" });
-                this.setState({ student: "", isProcessing: false });
-              }
-            });
-            Api.post("api/v1/student/upcomingList", {
-              parentId: this.state.parentId,
-              studentId: isParent ? this.state.studentId : userStudentId,
-              courseId: this.state.courseId,
-              courseScheduleId: this.state.scheduleId,
-            });
-          } else {
-            this.setState({ show: false, isSubmit: false });
-            toast.error("Payment Failed");
-          }
-        })
-        .catch((error) => {
-          if (error.response && error.response.status >= 400) {
-            let errorMessage;
-            const errorRequest = error.response.request;
-            if (errorRequest && errorRequest.response) {
-              errorMessage = JSON.parse(errorRequest.response).message;
-            }
-            toast.error(error.response.data.message);
-            this.setState({ isSubmit: false, show: false });
-          }
-        });
+                studentId: isParent ? this.state.studentId : userStudentId,
+                lessonId: this.state.lessonIds,
+                token: token,
+              },
+            })
+              .then((res) => {
+                const email = values.email.toLowerCase();
+                Api.post("/api/v1/billing/lesson/strip/payment", {
+                  currency: "inr",
+                  price: this.state.payment * 100,
+                  studentId: isParent ? this.state.studentId : userStudentId,
+                  courseId: this.state.courseId,
+                  courseScheduleId: this.state.scheduleId,
+                  lessonId: this.state.lessonIds,
+                })
+                  .then(async (resposne) => {
+                    const data = resposne.data;
+                    const confirmPayment = await stripe.confirmCardPayment(data.clientSecret, {
+                      payment_method: {
+                        card: card,
+                        billing_details: {
+                          address: {
+                            city: this.state.cityValue,
+                            country: "us",
+                            line1: values.address1,
+                            line2: values.address2,
+                            postal_code: values.zipCode,
+                            state: this.state.stateValue,
+                          },
+                          email: email,
+                          name: values.firstName,
+                          phone: values.phone,
+                        },
+                      },
+                    });
+
+                    if (!confirmPayment.error) {
+                      Api.post(
+                        `api/v1/billing/checkout/lesson/${
+                          (isStudent && parentId === "null") || (isStudent && parentId === null) ? "student" : "parent"
+                        }`,
+                        {
+                          firstName: values.firstName,
+                          lastName: values.lastName,
+                          address1: values.address1,
+                          address2: values.address2,
+                          email: values.email,
+                          city: this.state.cityValue,
+                          state: this.state.stateValue,
+                          zipCode: values.zipCode,
+                          phone: values.phone,
+                          parentId: this.state.parentId,
+                          studentId: isParent ? this.state.studentId : userStudentId,
+                          courseId: this.state.courseId,
+                          courseScheduleId: this.state.scheduleId,
+                          payment: this.state.payment,
+                          lessonId: this.state.lessonIds,
+                        }
+                      ).then((res) => {
+                        const status = res.status;
+                        if (status === 201) {
+                          resetForm({ values: "" });
+                          this.setState({ student: "", isProcessing: false });
+                        }
+                      });
+                      Api.post("api/v1/student/upcomingList", {
+                        parentId: this.state.parentId,
+                        studentId: isParent ? this.state.studentId : userStudentId,
+                        courseId: this.state.courseId,
+                        courseScheduleId: this.state.scheduleId,
+                      });
+                    } else {
+                      this.setState({
+                        show: false,
+                        isSubmit: false,
+                        view: true,
+                        errorText: "Payment Failed",
+                      });
+                      // toast.error("Payment Failed");
+                    }
+                  })
+                  .catch((error) => {
+                    if (error.response && error.response.status >= 400) {
+                      let errorMessage;
+                      const errorRequest = error.response.request;
+                      if (errorRequest && errorRequest.response) {
+                        errorMessage = JSON.parse(errorRequest.response).message;
+                      }
+                      // toast.error(error.response.data.message);
+                      this.setState({
+                        isSubmit: false,
+                        show: false,
+                        view: true,
+                        errorText: error.response.data.message,
+                      });
+                    }
+                  });
+              })
+              .catch((error) => {
+                if (error.response && error.response.status >= 400) {
+                  let errorMessage;
+                  const errorRequest = error.response.request;
+                  if (errorRequest && errorRequest.response) {
+                    errorMessage = JSON.parse(errorRequest.response).message;
+                  }
+                  // toast.error(error.response.data.message);
+                  this.setState({
+                    isSubmit: false,
+                    show: false,
+                    view: true,
+                    errorText: error.response.data.message,
+                  });
+                }
+                const errorStatus = error?.response?.status;
+                if (errorStatus === 401) {
+                  this.logout();
+                  toast.error("Session Timeout");
+                }
+              })
+          : Api.get("api/v1/student/upcomingSchedule/check", {
+              params: {
+                courseScheduleId: this.state.scheduleId,
+                studentId: isParent ? this.state.studentId : userStudentId,
+                token: token,
+              },
+            })
+              .then((res) => {
+                const email = values.email.toLowerCase();
+                Api.post("/api/v1/billing/strip/payment", {
+                  currency: "inr",
+                  price: this.state.payment * 100,
+                  studentId: isParent ? this.state.studentId : userStudentId,
+                  courseId: this.state.courseId,
+                  courseScheduleId: this.state.scheduleId,
+                })
+                  .then(async (resposne) => {
+                    const data = resposne.data;
+                    const confirmPayment = await stripe.confirmCardPayment(data.clientSecret, {
+                      payment_method: {
+                        card: card,
+                        billing_details: {
+                          address: {
+                            city: this.state.cityValue,
+                            country: "us",
+                            line1: values.address1,
+                            line2: values.address2,
+                            postal_code: values.zipCode,
+                            state: this.state.stateValue,
+                          },
+                          email: email,
+                          name: values.firstName,
+                          phone: values.phone,
+                        },
+                      },
+                    });
+
+                    if (!confirmPayment.error) {
+                      Api.post(
+                        `api/v1/billing/paybill/${
+                          (isStudent && parentId === "null") || (isStudent && parentId === null) ? "student" : "parent"
+                        }`,
+                        {
+                          firstName: values.firstName,
+                          lastName: values.lastName,
+                          address1: values.address1,
+                          address2: values.address2,
+                          email: values.email,
+                          city: this.state.cityValue,
+                          state: this.state.stateValue,
+                          zipCode: values.zipCode,
+                          phone: values.phone,
+                          parentId: this.state.parentId,
+                          studentId: isParent ? this.state.studentId : userStudentId,
+                          courseId: this.state.courseId,
+                          courseScheduleId: this.state.scheduleId,
+                          payment: this.state.payment,
+                        }
+                      ).then((res) => {
+                        const status = res.status;
+                        if (status === 201) {
+                          resetForm({ values: "" });
+                          this.setState({ student: "", isProcessing: false });
+                        }
+                      });
+                      Api.post("api/v1/student/upcomingList", {
+                        parentId: this.state.parentId,
+                        studentId: isParent ? this.state.studentId : userStudentId,
+                        courseId: this.state.courseId,
+                        courseScheduleId: this.state.scheduleId,
+                      });
+                    } else {
+                      this.setState({
+                        show: false,
+                        isSubmit: false,
+                        view: true,
+                        errorText: "Payment Failed",
+                      });
+                      // toast.error("Payment Failed");
+                    }
+                  })
+                  .catch((error) => {
+                    if (error.response && error.response.status >= 400) {
+                      let errorMessage;
+                      const errorRequest = error.response.request;
+                      if (errorRequest && errorRequest.response) {
+                        errorMessage = JSON.parse(errorRequest.response).message;
+                      }
+                      // toast.error(error.response.data.message);
+                      this.setState({
+                        isSubmit: false,
+                        show: false,
+                        view: true,
+                        errorText: error.response.data.message,
+                      });
+                    }
+                  });
+              })
+              .catch((error) => {
+                if (error.response && error.response.status >= 400) {
+                  let errorMessage;
+                  const errorRequest = error.response.request;
+                  if (errorRequest && errorRequest.response) {
+                    errorMessage = JSON.parse(errorRequest.response).message;
+                  }
+                  // toast.error(error.response.data.message);
+                  this.setState({
+                    isSubmit: false,
+                    show: false,
+                    view: true,
+                    errorText: error.response.data.message,
+                  });
+                }
+                const errorStatus = error?.response?.status;
+                if (errorStatus === 401) {
+                  this.logout();
+                  toast.error("Session Timeout");
+                }
+              });
+      }
     }
   };
 
   // Handle Modal
   handleModal() {
     this.setState({ show: !this.state.show });
+  }
+  //handle popup
+  handleFailed() {
+    this.setState({ show: !this.state.view });
   }
 
   Index = (value) => {
@@ -298,20 +528,6 @@ class CourseCheckoutScreen extends Component {
         this.setState({ stateCode: i });
       }
     }
-  };
-  validate = () => {
-    let errors = {};
-    if (!this.state.stateValue) {
-      errors.state = "State Is Required";
-      if (!this.state.cityValue) {
-        errors.city = "City Is Required";
-      }
-    }
-
-    if (!this.state.city) {
-      errors.city = "City Is Required";
-    }
-    return errors;
   };
 
   //checkbox
@@ -348,13 +564,23 @@ class CourseCheckoutScreen extends Component {
           <Loader />
         ) : (
           <Container className="mt-1">
+            <div className="d-flex">
+              <h4 className="mx-3 mb-0">Billing Information</h4>
+              <div className="user-value">
+                {/* Course Name */}
+                <h6 className=" purchased-course mx-3 mb-0 fw-bold">{this.state.scheduleDetail?.courseId?.name}</h6>-
+                {/* Category Name */}
+                <h6 className="purchased-course mx-3 mb-0 fw-bold">
+                  {this.state.scheduleDetail?.courseId?.category?.name}
+                </h6>
+                {/* Schedule Timings */}
+                <h6 className=" purchased-course mb-0">{`${this.state.scheduleDetail?.startTime} ${this.state.scheduleDetail?.endTime}`}</h6>
+                {/* <h6 className=" purchased-course mb-0">{`(${
+                  this.state.scheduleDetail?.startTime + " - " + this.state.scheduleDetail?.endTime
+                })`}</h6> */}
+              </div>
+            </div>
             <Row>
-              <Col md={9} className="user-value">
-                <h3>{/* {courseName} {courseTime && `(${courseTime})`} */}</h3>
-              </Col>
-            </Row>
-            <h4 className="billing-style">Billing Information</h4>
-            <Row className="billing-details-style mt-3 align-self-center">
               <Formik
                 enableReinitialize={true}
                 initialValues={{
@@ -370,21 +596,21 @@ class CourseCheckoutScreen extends Component {
                   student: isParent ? this.state.student : userStudentId,
                 }}
                 validationSchema={SignInSchema}
-                validate={this.validate}
                 onSubmit={(values, { resetForm }) => this.submit(values, { resetForm })}
               >
                 {(formik) => {
                   const { setFieldValue, handleSubmit, handleBlur, isValid } = formik;
                   return (
-                    <div className="pt-1">
+                    <div>
                       <Form onSubmit={handleSubmit}>
-                        <Row className="px-3 pt-2">
+                        <Row className="px-3">
                           {isParent && (
                             <Col sm={6} md={6}>
-                              <Form.Group>
-                                <Label notify={true}>Select Student Name</Label>
+                              <Form.Group className="form-row mt-3">
+                                <Label notify={true}>Select Student</Label>
                                 <Select
                                   value={this.state.student}
+                                  styles={customStyles}
                                   placeholder="Select Student"
                                   name="student"
                                   onChange={(e) => {
@@ -426,11 +652,11 @@ class CourseCheckoutScreen extends Component {
                             md={6}
                             className="checkbox-content d-flex justify-content-start align-items-center"
                           >
-                            <Form.Group className="form-row mt-3">
+                            <Form.Group className="form-row mt-4">
                               <Form.Check
                                 className="checkbox-style"
                                 type="checkbox"
-                                label="Billing Address Same As Registration Address"
+                                label="Billing Information Same As Registration Information"
                                 checked={this.state.checked}
                                 onChange={() => {
                                   this.setState({
@@ -449,7 +675,7 @@ class CourseCheckoutScreen extends Component {
                               <FormControl
                                 type="type"
                                 name="firstName"
-                                placeholder="First Name"
+                                placeholder="First Name as displayed in Credit card"
                                 id="firstName"
                                 value={this.state.firstName}
                                 onChange={(e) => this.setState({ firstName: e.target.value })}
@@ -469,7 +695,7 @@ class CourseCheckoutScreen extends Component {
                               <FormControl
                                 type="type"
                                 name="lastName"
-                                placeholder="Last Name"
+                                placeholder="Last Name as displayed in Credit card"
                                 id="lastName"
                                 value={this.state.lastName}
                                 onChange={(e) => this.setState({ lastName: e.target.value })}
@@ -507,7 +733,7 @@ class CourseCheckoutScreen extends Component {
                           </Col>
                           <Col sm={6} md={6}>
                             <Form.Group className="form-row" style={{ width: "100%" }}>
-                              <Label notify={true}>Address Line 2</Label>
+                              <Label>Address Line 2</Label>
                               <FormControl
                                 type="type"
                                 name="address2"
@@ -552,16 +778,19 @@ class CourseCheckoutScreen extends Component {
                             <Form.Group className="form-row mb-2" style={{ width: "100%" }}>
                               <Label notify={true}>Phone Number</Label>
                               <br />
-                              <FormControl
-                                type="type"
-                                name="phone"
-                                placeholder="Phone Number"
-                                id="phone"
-                                value={this.state.phone}
-                                onChange={(e) => this.setState({ phone: e.target.value })}
-                                onBlur={handleBlur}
-                                className="form-width"
-                              />
+                              <InputGroup className="mb-3">
+                                <InputGroup.Text id="basic-addon1">+1</InputGroup.Text>
+                                <FormControl
+                                  type="phoneNumber"
+                                  name="phone"
+                                  placeholder="Phone Number"
+                                  id="phone"
+                                  value={this.state.phone}
+                                  onChange={(e) => this.setState({ phone: e.target.value })}
+                                  onBlur={handleBlur}
+                                  className="form-width"
+                                />
+                              </InputGroup>
                               <ErrorMessage
                                 name="phone"
                                 component="span"
@@ -577,6 +806,7 @@ class CourseCheckoutScreen extends Component {
 
                               <Select
                                 value={this.state.state}
+                                styles={customStyles}
                                 name="state"
                                 placeholder="State"
                                 onChange={(e) => {
@@ -607,11 +837,15 @@ class CourseCheckoutScreen extends Component {
                               <br />
                               <Select
                                 placeholder="City"
+                                styles={customStyles}
                                 value={this.state.city}
                                 name="city"
                                 onChange={(e) => {
                                   setFieldValue("city", e);
-                                  this.setState({ cityValue: e.value, city: e });
+                                  this.setState({
+                                    cityValue: e.value,
+                                    city: e,
+                                  });
                                 }}
                                 options={states[this.state.stateCode]?.cities?.map((item, key) => ({
                                   label: item,
@@ -651,7 +885,7 @@ class CourseCheckoutScreen extends Component {
                         <Row>
                           <CardSection />
                         </Row>
-                        <div className="d-flex justify-content-end mt-4 px-3">
+                        <div className="d-flex justify-content-end mt-4 px-3 mb-4">
                           <Button
                             disabled={!isValid || this.state.isSubmit}
                             className={`${!isValid || this.state.isSubmit ? "checkout-disable" : "checkout-active"}`}
@@ -667,34 +901,70 @@ class CourseCheckoutScreen extends Component {
                 }}
               </Formik>
             </Row>
-            <Modal show={this.state.show} backdrop="static" keyboard={false} centered onHide={() => this.handleModal()}>
-              <Modal.Body>
-                <Row>
-                  {this.state.isProcessing ? (
-                    <div className="processing-content">
-                      <Spinner animation="grow" variant="secondary" />
-                      <h4 style={{ paddingLeft: 20 }}>Processing...</h4>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="success-content">
-                        <p className="payment-success-style">Payment Success!</p>
+            <div>
+              <Modal
+                show={this.state.show}
+                backdrop="static"
+                keyboard={false}
+                centered
+                onHide={() => this.handleModal()}
+              >
+                <Modal.Body>
+                  <Row>
+                    {this.state.isProcessing ? (
+                      <div className="processing-content">
+                        <Spinner animation="grow" variant="secondary" />
+                        <h4 style={{ paddingLeft: 20 }}>Processing...</h4>
                       </div>
-                      <div className="ok-button-container">
-                        <Button
-                          className="ok-button-style"
-                          variant="contained"
-                          color="primary"
-                          onClick={() => this.props.props.history.push("/dashboard")}
-                        >
-                          Go To Dashboard
-                        </Button>
+                    ) : (
+                      <div>
+                        <div className="success-content">
+                          <p className="payment-success-style">Payment Success!</p>
+                        </div>
+                        <div className="ok-button-container">
+                          <Button
+                            className="ok-button-style"
+                            variant="contained"
+                            color="primary"
+                            onClick={() => this.props.props.history.push("/dashboard")}
+                          >
+                            Go To Dashboard
+                          </Button>
+                        </div>
                       </div>
+                    )}
+                  </Row>
+                </Modal.Body>
+              </Modal>
+            </div>
+            <div>
+              <Modal
+                show={this.state.view}
+                backdrop="static"
+                keyboard={false}
+                centered
+                onHide={() => this.handleFailed()}
+              >
+                <Modal.Body>
+                  <Row>
+                    <div className="payment-details">
+                      <FaExclamationCircle size={40} />
                     </div>
-                  )}
-                </Row>
-              </Modal.Body>
-            </Modal>
+                    <h5 className="text-center">{this.state.errorText}</h5>
+                  </Row>
+                </Modal.Body>
+                <div className="ok-button-container">
+                  <Button
+                    className="ok-button-style"
+                    variant="contained"
+                    color="primary"
+                    onClick={() => this.setState({ view: false })}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </Modal>
+            </div>
           </Container>
         )}
       </div>

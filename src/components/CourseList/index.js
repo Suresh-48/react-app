@@ -1,142 +1,260 @@
-import React, { Component } from 'react'
-import {
-  Container,
-  Row,
-  Col,
-  Card,
-  Collapse,
-  Spinner,
-  Button,
-} from 'react-bootstrap'
-import { Tab, Tabs } from '@material-ui/core'
-import { Link } from 'react-router-dom'
-import ReactPaginate from 'react-paginate'
-import { createTheme } from '@material-ui/core/styles'
-import { ThemeProvider } from '@material-ui/styles'
-import { toast } from 'react-toastify'
-import { convertFromRaw } from 'draft-js'
-import { stateToHTML } from 'draft-js-export-html'
+import React, { Component } from "react";
 
+import { Container, Row, Col, Card, Collapse, Spinner, Button, Modal } from "react-bootstrap";
+
+import { Tab, Tabs } from "@material-ui/core";
+import { Link } from "react-router-dom";
+import ReactPaginate from "react-paginate";
+import { createTheme } from "@material-ui/core/styles";
+import { ThemeProvider } from "@material-ui/styles";
+import { toast } from "react-toastify";
+import { convertFromRaw } from "draft-js";
+import { stateToHTML } from "draft-js-export-html";
+
+import Loader from "../core/Loader";
 // Api
-import Api from '../../Api'
+import Api from "../../Api";
 
 // Styles
-import '../../css/CourseList.scss'
+import "../../css/CourseList.scss";
 
 // icons
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faPlus, faEllipsisV } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 
 const theme = createTheme({
   palette: {
     primary: {
-      light: '#717174',
-      main: '#717174',
-      dark: '#002884',
-      contrastText: '#fff',
+      light: "#717174",
+      main: "#717174",
+      dark: "#002884",
+      contrastText: "#fff",
     },
     secondary: {
-      light: '#ff7961',
-      main: '#f44336',
-      dark: '#ba000d',
-      contrastText: '#000',
+      light: "#ff7961",
+      main: "#f44336",
+      dark: "#ba000d",
+      contrastText: "#000",
     },
   },
-})
+});
 
 export default class CourseList extends Component {
   constructor(props) {
-    super(props)
+    super(props);
     this.state = {
       publish: [],
       draft: [],
       archive: [],
       open: false,
       cardOpen: false,
-      userDetailsId: '',
+      userDetailsId: "",
       value: 0,
-      cardId: '',
+      cardId: "",
       publishCurrentPage: 1,
       draftCurrentPage: 1,
       archiveCurrentPage: 1,
       postsPerPage: 9,
       isLoading: true,
-    }
+      show: false,
+      lessonShow: false,
+      lessonLength: "",
+      lessonQuizLength: "",
+      lessonHomeworkLength: "",
+      courseScheduleLength: "",
+      schedule: false,
+    };
   }
 
   handlePublishPageClick = (data) => {
-    let selected = data.selected + 1
-    this.setState({ publishCurrentPage: selected })
-  }
+    let selected = data.selected + 1;
+    this.setState({ publishCurrentPage: selected });
+  };
 
   handleDraftPageClick = (data) => {
-    let selected = data.selected + 1
-    this.setState({ draftCurrentPage: selected })
-  }
+    let selected = data.selected + 1;
+    this.setState({ draftCurrentPage: selected });
+  };
 
   // Convert Description
   convertFromJSONToHTML = (value) => {
     try {
-      return { __html: stateToHTML(convertFromRaw(JSON.parse(value))) }
+      return { __html: stateToHTML(convertFromRaw(JSON.parse(value))) };
     } catch (exp) {
-      return { __html: 'Error' }
+      return { __html: "Error" };
     }
-  }
+  };
 
   //get publish course data
   getPublishCourse = () => {
-    Api.get('api/v1/course/publish').then((res) => {
-      const data = res.data.data.data
-      this.setState({ publish: data, isLoading: false })
-    })
-  }
+    const token = localStorage.getItem("sessionId");
+    Api.get("api/v1/course/publish", { headers: { token: token } })
+      .then((res) => {
+        const data = res?.data?.data?.data;
+        this.setState({ publish: data, isLoading: false });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
+      });
+  };
+
+  // Log out
+  logout = () => {
+   setTimeout(() => {
+      localStorage.clear(this.props.history.push("/kharpi"));
+      window.location.reload();
+   }, 2000);
+  };
 
   componentDidMount() {
-    this.getPublishCourse()
-    this.getDraftCourse()
-    this.getArchiveCourse()
+    this.getPublishCourse();
+    this.getDraftCourse();
+    this.getArchiveCourse();
   }
+
+  getCourseQuizHomework = (id) => {
+    const token = localStorage.getItem("sessionId");
+    Api.get("/api/v1/courseLesson/check/list", {
+      params: {
+        courseId: id,
+        token: token,
+      },
+    })
+      .then((res) => {
+        const data = res?.data?.data;
+        this.setState({
+          lessonLength: data?.lessonLength,
+          lessonHomeworkLength: data?.lessonHomeWorkLength,
+          lessonQuizLength: data?.lessonQuizLength,
+          courseScheduleLength: data?.courseScheduleLength,
+        });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
+      });
+  };
 
   //change publish and draft course type
   changeCourseType = (type) => {
-    Api.patch('api/v1/course/type', {
-      courseId: this.state.cardId,
-      type: type,
-    })
-      .then((response) => {
-        this.getPublishCourse()
-        this.getDraftCourse()
-        this.getArchiveCourse()
-        this.setState({ open: false })
-      })
-      .catch((error) => {
-        if (error.response && error.response.status >= 400) {
-          let errorMessage
-          const errorRequest = error.response.request
-          if (errorRequest && errorRequest.response) {
-            errorMessage = JSON.parse(errorRequest.response).message
+    const token = localStorage.getItem("sessionId");
+    if (type === "Publish") {
+      if (this.state.lessonLength > 0) {
+        if (this.state.lessonLength === this.state.lessonHomeworkLength && this.state.lessonQuizLength) {
+          if (this.state.courseScheduleLength > 0) {
+            Api.patch("api/v1/course/type", {
+              courseId: this.state.cardId,
+              type: type,
+              token: token,
+            })
+              .then((response) => {
+                this.getPublishCourse();
+                this.getDraftCourse();
+                this.getArchiveCourse();
+                this.setState({ open: false });
+              })
+              .catch((error) => {
+                if (error.response && error.response.status >= 400) {
+                  let errorMessage;
+                  const errorRequest = error.response.request;
+                  if (errorRequest && errorRequest.response) {
+                    errorMessage = JSON.parse(errorRequest.response).message;
+                  }
+                  this.setState({ open: false });
+                  toast.error(error.response.data.message);
+                }
+                const errorStatus = error?.response?.status;
+                if (errorStatus === 401) {
+                  this.logout();
+                  toast.error("Session Timeout");
+                }
+              });
+          } else {
+            this.setState({ lessonShow: true, schedule: true });
           }
-          this.setState({ open: false })
-          toast.error(error.response.data.message)
+        } else {
+          this.setState({ lessonShow: true, show: true });
         }
+      } else {
+        this.setState({ lessonShow: true });
+      }
+
+      // this.setState({ show: true });
+    } else {
+      Api.patch("api/v1/course/type", {
+        courseId: this.state.cardId,
+        type: type,
+        token: token,
+
+        // Api.patch("api/v1/course/type", {
+        //   courseId: this.state.cardId,
+        //   type: type,
       })
-  }
+        .then((response) => {
+          this.getPublishCourse();
+          this.getDraftCourse();
+          this.getArchiveCourse();
+          this.setState({ open: false });
+        })
+        .catch((error) => {
+          if (error.response && error.response.status >= 400) {
+            let errorMessage;
+            const errorRequest = error.response.request;
+            if (errorRequest && errorRequest.response) {
+              errorMessage = JSON.parse(errorRequest.response).message;
+            }
+            this.setState({ open: false });
+            toast.error(error.response.data.message);
+          }
+          const errorStatus = error?.response?.status;
+          if (errorStatus === 401) {
+            this.logout();
+            toast.error("Session Timeout");
+          }
+        });
+    }
+  };
 
   //get draft course data
   getDraftCourse = () => {
-    Api.get('api/v1/course/Draft').then((res) => {
-      const data = res.data.data.data
-      this.setState({ draft: data })
-    })
-  }
+    const token = localStorage.getItem("sessionId");
+    Api.get("api/v1/course/Draft", { headers: { token: token } })
+      .then((res) => {
+        const data = res.data.data.data;
+        this.setState({ draft: data });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
+      });
+  };
 
   //get archive course data
   getArchiveCourse = () => {
-    Api.get('api/v1/course/archive').then((res) => {
-      const data = res.data.data.data
-      this.setState({ archive: data })
-    })
-  }
+    const token = localStorage.getItem("sessionId");
+    Api.get("api/v1/course/archive", { headers: { token: token } })
+      .then((res) => {
+        const data = res.data.data.data;
+        this.setState({ archive: data });
+      })
+      .catch((error) => {
+        const errorStatus = error?.response?.status;
+        if (errorStatus === 401) {
+          this.logout();
+          toast.error("Session Timeout");
+        }
+      });
+  };
 
   render() {
     const {
@@ -148,58 +266,54 @@ export default class CourseList extends Component {
       archiveCurrentPage,
       draftCurrentPage,
       isLoading,
-    } = this.state
+    } = this.state;
 
     // Get publish current posts
-    const publishLastpage = publishCurrentPage * postsPerPage
-    const publishFirstPage = publishLastpage - postsPerPage
-    const publishCourses = publish.slice(publishFirstPage, publishLastpage)
-    const publishPageNumbers = []
+    const publishLastpage = publishCurrentPage * postsPerPage;
+    const publishFirstPage = publishLastpage - postsPerPage;
+    const publishCourses = publish.slice(publishFirstPage, publishLastpage);
+    const publishPageNumbers = [];
 
     for (let i = 1; i <= Math.ceil(publish.length / postsPerPage); i++) {
-      publishPageNumbers.push(i)
+      publishPageNumbers.push(i);
     }
 
     // Get publish current posts
-    const draftLastpage = draftCurrentPage * postsPerPage
-    const draftFirstPage = draftLastpage - postsPerPage
-    const draftCourses = draft.slice(draftFirstPage, draftLastpage)
-    const draftPageNumbers = []
+    const draftLastpage = draftCurrentPage * postsPerPage;
+    const draftFirstPage = draftLastpage - postsPerPage;
+    const draftCourses = draft.slice(draftFirstPage, draftLastpage);
+    const draftPageNumbers = [];
     for (let i = 1; i <= Math.ceil(draft.length / postsPerPage); i++) {
-      draftPageNumbers.push(i)
+      draftPageNumbers.push(i);
     }
 
     // Get archive current posts
-    const archiveLastPage = archiveCurrentPage * postsPerPage
-    const archiveFirstPage = archiveLastPage - postsPerPage
-    const archiveCourses = archive.slice(archiveFirstPage, archiveLastPage)
-    const archivePageNumbers = []
+    const archiveLastPage = archiveCurrentPage * postsPerPage;
+    const archiveFirstPage = archiveLastPage - postsPerPage;
+    const archiveCourses = archive.slice(archiveFirstPage, archiveLastPage);
+    const archivePageNumbers = [];
     for (let i = 1; i <= Math.ceil(archive.length / postsPerPage); i++) {
-      archivePageNumbers.push(i)
+      archivePageNumbers.push(i);
     }
 
     return (
       <ThemeProvider theme={theme}>
         <Container className="pt-3 mb-3">
           {isLoading === true ? (
-            <div className="d-flex position-absolute top-50 start-50 translate-middle">
-              <Spinner animation="grow" variant="primary" />
-              <span>
-                <h4 style={{ paddingLeft: 20 }}>Loading...</h4>
-              </span>
-            </div>
+            <Loader />
           ) : (
             <div>
               <div className="create-course-button">
                 <h3 className="course-title">Courses</h3>
-                <Button
-                  className="create-button-style py-1"
-                  variant="primary"
-                  onClick={() => this.props.history.push('/course/add')}
-                >
-                  <FontAwesomeIcon icon={faPlus} size="lg" className="mx-1" />{' '}
-                  Create Course
-                </Button>
+                <div className="mt-2">
+                  <Button
+                    className="create-button-style py-1 Kharpi-save-btn"
+                    variant="primary"
+                    onClick={() => this.props.history.push("/course/add")}
+                  >
+                    <FontAwesomeIcon icon={faPlus} size="lg" className="mx-1" /> Create Course
+                  </Button>
+                </div>
               </div>
 
               <div>
@@ -207,8 +321,10 @@ export default class CourseList extends Component {
                   value={this.state.value}
                   indicatorColor="primary"
                   onChange={(event, newValue) => {
-                    this.setState({ value: newValue })
+                    this.setState({ value: newValue });
                   }}
+                  variant="fullWidth"
+                  aria-label="full width tabs example"
                 >
                   <Tab
                     label={
@@ -221,7 +337,7 @@ export default class CourseList extends Component {
                         </Col>
                       </Row>
                     }
-                    style={{ width: '33.3%' }}
+                    style={{ width: "33.3%" }}
                     value={0}
                   />
 
@@ -236,7 +352,7 @@ export default class CourseList extends Component {
                         </Col>
                       </Row>
                     }
-                    style={{ width: '33.3%' }}
+                    style={{ width: "33.3%" }}
                     value={1}
                   />
                   <Tab
@@ -250,7 +366,7 @@ export default class CourseList extends Component {
                         </Col>
                       </Row>
                     }
-                    style={{ width: '33.3%' }}
+                    style={{ width: "33.3%" }}
                     value={2}
                   />
                 </Tabs>
@@ -260,48 +376,41 @@ export default class CourseList extends Component {
                     {publish?.length !== 0 ? (
                       <Row className="mt-3">
                         {publishCourses.map((course, key) => (
-                          <Col
-                            xs={12} sm={6} md={6} lg={4}
-                            style={{ marginTop: 10 }}
-                          >
+                          <Col xs={12} sm={6} md={6} lg={4} style={{ marginTop: 10 }}>
                             <Card className="card-height-style">
                               <div className="image-content">
-                                {course?.imageUrl === undefined ||
-                                course?.imageUrl === null ? (
+                                {course?.imageUrl === undefined || course?.imageUrl === null ? (
                                   <img
                                     className="image-heigh"
                                     src="https://static.wikia.nocookie.net/just-because/images/0/0c/NoImage_Available.png/revision/latest?cb=20170601005615"
                                     alt="Snow"
-                                    width={'100%'}
-                                    height={'100%'}
+                                    width={"100%"}
+                                    height={"100%"}
                                   />
                                 ) : (
                                   <img
                                     className="image-heigh"
                                     src={course?.imageUrl}
                                     alt="Snow"
-                                    width={'100%'}
-                                    height={'100%'}
+                                    width={"100%"}
+                                    height={"100%"}
                                   />
                                 )}
-                                <div class="top-right">
+                                <div className="top-right">
                                   <FontAwesomeIcon
                                     icon={faEllipsisV}
-                                    size="sm"
-                                    color={'black'}
+                                    size="lg"
+                                    color={"white"}
                                     onClick={() =>
                                       this.setState({
                                         open: !this.state.open,
                                         cardId: course.id,
                                       })
                                     }
-                                    style={{ cursor: 'pointer' }}
+                                    className="font-awesome-point"
                                   />
                                   {this.state.cardId === course.id ? (
-                                    <Collapse
-                                      in={this.state.open}
-                                      className="collapse-show-text-width"
-                                    >
+                                    <Collapse in={this.state.open} className="collapse-show-text-width">
                                       <div className="collapse-style">
                                         <Link
                                           to={{
@@ -329,9 +438,7 @@ export default class CourseList extends Component {
                                         <Link
                                           to="#"
                                           className="navigate-edit-text-link"
-                                          onClick={() =>
-                                            this.changeCourseType('Archive')
-                                          }
+                                          onClick={() => this.changeCourseType("Archive")}
                                         >
                                           Archive
                                         </Link>
@@ -339,9 +446,7 @@ export default class CourseList extends Component {
                                         <Link
                                           to="#"
                                           className="navigate-edit-text-link"
-                                          onClick={() =>
-                                            this.changeCourseType('Draft')
-                                          }
+                                          onClick={() => this.changeCourseType("Draft")}
                                         >
                                           Draft
                                         </Link>
@@ -351,20 +456,17 @@ export default class CourseList extends Component {
                                 </div>
                               </div>
                               <Card.Body className="card-body-alignments">
-                                <Card.Title  className="truncate-text">
-                                  {course?.name}
-                                </Card.Title>
+                                <Card.Title className="truncate-text">{course?.name}</Card.Title>
                                 <Card.Text>
                                   <p
                                     className="ellipsis-text"
-                                    dangerouslySetInnerHTML={this.convertFromJSONToHTML(
-                                      course?.description,
-                                    )}
+                                    dangerouslySetInnerHTML={this.convertFromJSONToHTML(course?.description)}
                                   ></p>
                                 </Card.Text>
                               </Card.Body>
-                              <Card.Footer>
-                                {/* <Row className="card-footer-header">
+                              {course?.discountAmount ? (
+                                <Card.Footer>
+                                  {/* <Row className="card-footer-header">
                                   <Col
                                     className="d-flex"
                                     xs={12}
@@ -395,63 +497,56 @@ export default class CourseList extends Component {
                                     </div>
                                   </Col>
                                 </Row> */}
-                                <div className="row card-footer-header">
-                                  <Col xs={12} sm={12} md={5}>
-                                    <div className="footer-price-style ">
-                                      <p className="amount-text">
-                                        ${course?.actualAmount}
-                                      </p>
-                                      <p className="mb-0">
-                                        ${course?.discountAmount}
-                                      </p>
-                                    </div>
-                                  </Col>
-                                  <Col>
-                                    <div className="footer-enroll-style ">
-                                      <p className="enroll-text">Enrolled :</p>
-                                      <p className="mb-0">
-                                        {' '}
-                                        {course?.totalEnrolledStudent ===
-                                          undefined
-                                          ? 0
-                                          : course?.totalEnrolledStudent}
-                                        /20
-                                      </p>
-                                    </div>
-                                  </Col>
-                                </div>
-                              </Card.Footer>
+                                  <div className="row card-footer-header">
+                                    <Col xs={12} sm={12} md={5}>
+                                      <div className="footer-price-style ">
+                                        <p className="discount-amount-text ">${course?.discountAmount}</p>
+                                        <p className="actual-amount-text mt-3 ">${course?.actualAmount}</p>
+                                      </div>
+                                    </Col>
+                                  </div>
+                                </Card.Footer>
+                              ) : (
+                                <Card.Footer>
+                                  <div className="row card-footer-header">
+                                    <Col xs={12} sm={12} md={5}>
+                                      <div className="footer-price-style ">
+                                        <p className="discount-amount-text ">$ 0</p>
+                                        <p className="actual-amount-text mt-3 ">$ 0</p>
+                                      </div>
+                                    </Col>
+                                  </div>
+                                </Card.Footer>
+                              )}
                             </Card>
                           </Col>
                         ))}
                         {publish?.length > 0 ? (
                           <div className="pagination-width">
                             <ReactPaginate
-                              previousLabel={'Previous'}
-                              nextLabel={'Next'}
-                              breakLabel={'...'}
-                              breakClassName={'break-me'}
+                              previousLabel={"Previous"}
+                              nextLabel={"Next"}
+                              breakLabel={"..."}
+                              breakClassName={"break-me"}
                               pageCount={publishPageNumbers?.length}
                               marginPagesDisplayed={2}
                               pageRangeDisplayed={3}
                               onPageChange={this.handlePublishPageClick}
-                              containerClassName={'pagination'}
-                              activeClassName={'active'}
-                              pageClassName={'page-item'}
-                              pageLinkClassName={'page-link'}
-                              previousClassName={'page-item'}
-                              previousLinkClassName={'page-link'}
-                              nextClassName={'page-item'}
-                              nextLinkClassName={'page-link'}
+                              containerClassName={"pagination"}
+                              activeClassName={"active"}
+                              pageClassName={"page-item"}
+                              pageLinkClassName={"page-link"}
+                              previousClassName={"page-item"}
+                              previousLinkClassName={"page-link"}
+                              nextClassName={"page-item"}
+                              nextLinkClassName={"page-link"}
                             />
                           </div>
                         ) : null}
                       </Row>
                     ) : (
                       <div>
-                        <p className="no-record-position-style">
-                          No Record Found
-                        </p>
+                        <p className="no-record-position-style">No Record Found</p>
                       </div>
                     )}
                   </div>
@@ -462,49 +557,42 @@ export default class CourseList extends Component {
                         {draft?.length !== 0 ? (
                           <Row className="card-row mt-3">
                             {draftCourses.map((course, key) => (
-                              <Col
-                                xs={12} sm={6} md={6} lg={4}
-                                style={{ marginTop: 10 }}
-                              >
+                              <Col xs={12} sm={6} md={6} lg={4} style={{ marginTop: 10 }}>
                                 <Card className="card-height-style">
                                   <div className="image-content">
-                                    {course?.imageUrl === undefined ||
-                                    course?.imageUrl === null ? (
+                                    {course?.imageUrl === undefined || course?.imageUrl === null ? (
                                       <img
                                         className="image-heigh"
                                         src="https://static.wikia.nocookie.net/just-because/images/0/0c/NoImage_Available.png/revision/latest?cb=20170601005615"
                                         alt="Snow"
-                                        width={'100%'}
-                                        height={'100%'}
+                                        width={"100%"}
+                                        height={"100%"}
                                       />
                                     ) : (
                                       <img
                                         className="image-heigh"
                                         src={course?.imageUrl}
                                         alt="Snow"
-                                        width={'100%'}
-                                        height={'100%'}
+                                        width={"100%"}
+                                        height={"100%"}
                                       />
                                     )}
-                                    <div class="top-right">
-                                      {' '}
+                                    <div className="top-right">
                                       <FontAwesomeIcon
                                         icon={faEllipsisV}
-                                        size="sm"
-                                        color={'black'}
-                                        onClick={() =>
+                                        size="lg"
+                                        color={"white"}
+                                        onClick={() => {
                                           this.setState({
                                             open: !this.state.open,
                                             cardId: course.id,
-                                          })
-                                        }
-                                        style={{ cursor: 'pointer' }}
+                                          });
+                                          this.getCourseQuizHomework(course?.id);
+                                        }}
+                                        className="font-awesome-point"
                                       />
                                       {this.state.cardId === course.id ? (
-                                        <Collapse
-                                          in={this.state.open}
-                                          className="collapse-show-text-width"
-                                        >
+                                        <Collapse in={this.state.open} className="collapse-show-text-width">
                                           <div className="collapse-style">
                                             <Link
                                               to={{
@@ -512,12 +600,7 @@ export default class CourseList extends Component {
                                                 state: { courseId: course?.id },
                                               }}
                                               className="navigate-edit-text-link"
-                                              onClick={() =>
-                                                localStorage.setItem(
-                                                  'checkoutCourseId',
-                                                  course?.id,
-                                                )
-                                              }
+                                              onClick={() => localStorage.setItem("checkoutCourseId", course?.id)}
                                             >
                                               View
                                             </Link>
@@ -538,9 +621,7 @@ export default class CourseList extends Component {
                                             <Link
                                               to="#"
                                               className="navigate-edit-text-link"
-                                              onClick={() =>
-                                                this.changeCourseType('Archive')
-                                              }
+                                              onClick={() => this.changeCourseType("Archive")}
                                             >
                                               Archive
                                             </Link>
@@ -548,9 +629,7 @@ export default class CourseList extends Component {
                                             <Link
                                               to="#"
                                               className="navigate-edit-text-link"
-                                              onClick={() =>
-                                                this.changeCourseType('Publish')
-                                              }
+                                              onClick={() => this.changeCourseType("Publish")}
                                             >
                                               Publish
                                             </Link>
@@ -560,77 +639,66 @@ export default class CourseList extends Component {
                                     </div>
                                   </div>
                                   <Card.Body>
-                                    <Card.Title className="course-name">
-                                      {course?.name}
-                                    </Card.Title>
+                                    <Card.Title className="course-name">{course?.name}</Card.Title>
                                     <Card.Text>
                                       <p
                                         className="ellipsis-text"
-                                        dangerouslySetInnerHTML={this.convertFromJSONToHTML(
-                                          course?.description,
-                                        )}
+                                        dangerouslySetInnerHTML={this.convertFromJSONToHTML(course?.description)}
                                       ></p>
                                     </Card.Text>
                                   </Card.Body>
-                                  <Card.Footer>
-                                    <Row className="card-footer-header">
-                                      <Col
-                                        className="d-flex"
-                                        xs={12}
-                                        md={12}
-                                        lg={6}
-                                        sm={12}
-                                      >
-                                        <div className="footer-price-style ">
-                                          <p className="amount-text">
-                                            ${course?.actualAmount}
-                                          </p>
-                                          <p className="mb-0">
-                                            ${course?.discountAmount}
-                                          </p>
-                                        </div>
-                                      </Col>
-                                      <Col xs={12} md={12} lg={6} sm={12}>
-                                        <div className="footer-enroll-style ">
-                                          <p className="enroll-text">
-                                            Enrolled :
-                                          </p>
-                                          <p className="mb-0">4/20</p>
-                                        </div>
-                                      </Col>
-                                    </Row>
-                                  </Card.Footer>
+                                  {course?.discountAmount ? (
+                                    <Card.Footer>
+                                      <Row className="card-footer-header">
+                                        <Col className="d-flex justify-content-center" xs={12} md={12} lg={6} sm={12}>
+                                          <div className="footer-price-style ">
+                                            <p className="discount-amount-text ">${course?.discountAmount}</p>
+                                            <p className="actual-amount-text mt-2">${course?.actualAmount}</p>
+                                          </div>
+                                        </Col>
+                                      </Row>
+                                    </Card.Footer>
+                                  ) : (
+                                    <Card.Footer>
+                                      <Row className="card-footer-header">
+                                        <Col className="d-flex justify-content-center" xs={12} md={12} lg={6} sm={12}>
+                                          <div className="footer-price-style ">
+                                            <p className="discount-amount-text ">$ 0</p>
+                                            <p className="actual-amount-text mt-2">$ 0</p>
+                                          </div>
+                                        </Col>
+                                      </Row>
+                                    </Card.Footer>
+                                  )}
                                 </Card>
                               </Col>
                             ))}
                             {draft?.length > 0 ? (
                               <div className="pagination-width">
                                 <ReactPaginate
-                                  previousLabel={'previous'}
-                                  nextLabel={'next'}
-                                  breakLabel={'...'}
-                                  breakClassName={'break-me'}
+                                  previousLabel={"previous"}
+                                  nextLabel={"next"}
+                                  breakLabel={"..."}
+                                  breakClassName={"break-me"}
                                   pageCount={draftPageNumbers?.length}
                                   marginPagesDisplayed={2}
                                   pageRangeDisplayed={3}
                                   onPageChange={this.handleDraftPageClick}
-                                  containerClassName={'pagination'}
-                                  activeClassName={'active'}
-                                  pageClassName={'page-item'}
-                                  pageLinkClassName={'page-link'}
-                                  previousClassName={'page-item'}
-                                  previousLinkClassName={'page-link'}
-                                  nextClassName={'page-item'}
-                                  nextLinkClassName={'page-link'}
+                                  containerClassName={"pagination"}
+                                  activeClassName={"active"}
+                                  pageClassName={"page-item"}
+                                  pageLinkClassName={"page-link"}
+                                  previousClassName={"page-item"}
+                                  previousLinkClassName={"page-link"}
+                                  nextClassName={"page-item"}
+                                  nextLinkClassName={"page-link"}
                                 />
                               </div>
                             ) : null}
                           </Row>
                         ) : (
                           <div>
-                            <p className="no-record-position-style">
-                              No Record Found
-                            </p>
+                            <p className="no-record-position-style">No Record Found</p>
                           </div>
                         )}
                       </div>
@@ -639,49 +707,42 @@ export default class CourseList extends Component {
                         {archive?.length !== 0 ? (
                           <Row className="card-row mt-3">
                             {archiveCourses.map((course, key) => (
-                              <Col
-                                xs={12} sm={6} md={6} lg={4}
-                                style={{ marginTop: 10 }}
-                              >
+                              <Col xs={12} sm={6} md={6} lg={4} style={{ marginTop: 10 }}>
                                 <Card className="card-height-style">
                                   <div className="image-content">
-                                    {course?.imageUrl === undefined ||
-                                    course?.imageUrl === null ? (
+                                    {course?.imageUrl === undefined || course?.imageUrl === null ? (
                                       <img
                                         className="image-heigh"
                                         src="https://static.wikia.nocookie.net/just-because/images/0/0c/NoImage_Available.png/revision/latest?cb=20170601005615"
                                         alt="Snow"
-                                        width={'100%'}
-                                        height={'100%'}
+                                        width={"100%"}
+                                        height={"100%"}
                                       />
                                     ) : (
                                       <img
                                         className="image-heigh"
                                         src={course?.imageUrl}
                                         alt="Snow"
-                                        width={'100%'}
-                                        height={'100%'}
+                                        width={"100%"}
+                                        height={"100%"}
                                       />
                                     )}
-                                    <div class="top-right">
-                                      {' '}
+                                    <div className="top-right">
                                       <FontAwesomeIcon
                                         icon={faEllipsisV}
-                                        size="sm"
-                                        color={'black'}
-                                        onClick={() =>
+                                        size="lg"
+                                        color={"white"}
+                                        onClick={() => {
                                           this.setState({
                                             open: !this.state.open,
                                             cardId: course?.id,
-                                          })
-                                        }
-                                        style={{ cursor: 'pointer' }}
+                                          });
+                                          this.getCourseQuizHomework(course?.id);
+                                        }}
+                                        className="font-awesome-point"
                                       />
                                       {this.state.cardId === course?.id ? (
-                                        <Collapse
-                                          in={this.state.open}
-                                          className="collapse-show-text-width"
-                                        >
+                                        <Collapse in={this.state.open} className="collapse-show-text-width">
                                           <div className="collapse-style">
                                             <Link
                                               to={{
@@ -689,12 +750,7 @@ export default class CourseList extends Component {
                                                 state: { courseId: course?.id },
                                               }}
                                               className="navigate-edit-text-link"
-                                              onClick={() =>
-                                                localStorage.setItem(
-                                                  'checkoutCourseId',
-                                                  course?.id,
-                                                )
-                                              }
+                                              onClick={() => localStorage.setItem("checkoutCourseId", course?.id)}
                                             >
                                               View
                                             </Link>
@@ -715,9 +771,7 @@ export default class CourseList extends Component {
                                             <Link
                                               to="#"
                                               className="navigate-edit-text-link"
-                                              onClick={() =>
-                                                this.changeCourseType('Publish')
-                                              }
+                                              onClick={() => this.changeCourseType("Publish")}
                                             >
                                               Publish
                                             </Link>
@@ -725,9 +779,7 @@ export default class CourseList extends Component {
                                             <Link
                                               to="#"
                                               className="navigate-edit-text-link"
-                                              onClick={() =>
-                                                this.changeCourseType('Draft')
-                                              }
+                                              onClick={() => this.changeCourseType("Draft")}
                                             >
                                               Draft
                                             </Link>
@@ -737,77 +789,66 @@ export default class CourseList extends Component {
                                     </div>
                                   </div>
                                   <Card.Body>
-                                    <Card.Title className="course-name">
-                                      {course?.name}
-                                    </Card.Title>
+                                    <Card.Title className="course-name">{course?.name}</Card.Title>
                                     <Card.Text>
                                       <p
                                         className="ellipsis-text"
-                                        dangerouslySetInnerHTML={this.convertFromJSONToHTML(
-                                          course?.description,
-                                        )}
+                                        dangerouslySetInnerHTML={this.convertFromJSONToHTML(course?.description)}
                                       ></p>
                                     </Card.Text>
                                   </Card.Body>
-                                  <Card.Footer>
-                                    <Row className="card-footer-header">
-                                      <Col
-                                        className="d-flex"
-                                        xs={12}
-                                        md={12}
-                                        lg={6}
-                                        sm={12}
-                                      >
-                                        <div className="footer-price-style ">
-                                          <p className="amount-text">
-                                            ${course?.actualAmount}
-                                          </p>
-                                          <p className="mb-0">
-                                            ${course?.discountAmount}
-                                          </p>
-                                        </div>
-                                      </Col>
-                                      <Col xs={12} md={12} lg={6} sm={12}>
-                                        <div className="footer-enroll-style">
-                                          <p className="enroll-text">
-                                            Enrolled :
-                                          </p>
-                                          <p className="mb-0">4/20</p>
-                                        </div>
-                                      </Col>
-                                    </Row>
-                                  </Card.Footer>
+                                  {course?.discountAmount ? (
+                                    <Card.Footer>
+                                      <Row className="card-footer-header">
+                                        <Col className="d-flex justify-content-center" xs={12} md={12} lg={6} sm={12}>
+                                          <div className="footer-price-style ">
+                                            <p className="discount-amount-text ">${course?.discountAmount}</p>
+                                            <p className="actual-amount-text mt-2">${course?.actualAmount}</p>
+                                          </div>
+                                        </Col>
+                                      </Row>
+                                    </Card.Footer>
+                                  ) : (
+                                    <Card.Footer>
+                                      <Row className="card-footer-header">
+                                        <Col className="d-flex justify-content-center" xs={12} md={12} lg={6} sm={12}>
+                                          <div className="footer-price-style ">
+                                            <p className="discount-amount-text ">$ 0</p>
+                                            <p className="actual-amount-text mt-2">$ 0</p>
+                                          </div>
+                                        </Col>
+                                      </Row>
+                                    </Card.Footer>
+                                  )}
                                 </Card>
                               </Col>
                             ))}
                             {archive?.length > 0 ? (
                               <div className="pagination-width">
                                 <ReactPaginate
-                                  previousLabel={'previous'}
-                                  nextLabel={'next'}
-                                  breakLabel={'...'}
-                                  breakClassName={'break-me'}
+                                  previousLabel={"previous"}
+                                  nextLabel={"next"}
+                                  breakLabel={"..."}
+                                  breakClassName={"break-me"}
                                   pageCount={archivePageNumbers?.length}
                                   marginPagesDisplayed={2}
                                   pageRangeDisplayed={3}
                                   onPageChange={this.handlearchivePageClick}
-                                  containerClassName={'pagination'}
-                                  activeClassName={'active'}
-                                  pageClassName={'page-item'}
-                                  pageLinkClassName={'page-link'}
-                                  previousClassName={'page-item'}
-                                  previousLinkClassName={'page-link'}
-                                  nextClassName={'page-item'}
-                                  nextLinkClassName={'page-link'}
+                                  containerClassName={"pagination"}
+                                  activeClassName={"active"}
+                                  pageClassName={"page-item"}
+                                  pageLinkClassName={"page-link"}
+                                  previousClassName={"page-item"}
+                                  previousLinkClassName={"page-link"}
+                                  nextClassName={"page-item"}
+                                  nextLinkClassName={"page-link"}
                                 />
                               </div>
                             ) : null}
                           </Row>
                         ) : (
                           <div>
-                            <p className="no-record-position-style">
-                              No Record Found
-                            </p>
+                            <p className="no-record-position-style">No Record Found</p>
                           </div>
                         )}
                       </div>
@@ -818,7 +859,33 @@ export default class CourseList extends Component {
             </div>
           )}
         </Container>
+
+        <Modal show={this.state.lessonShow} centered style={{ left: "2px" }}>
+          <Row className="border-bottom-color m-0 py-3">
+            <h5 className="filter-head-cls">Unable to Publish !</h5>
+          </Row>
+          {this.state.show === true ? (
+            <p className="px-5 pt-5 pb-4">
+              Quiz and Homework are missing in some lesson. Please create quiz and homework in the lesson, Before
+              publishing the course.
+            </p>
+          ) : this.state.schedule === true ? (
+            <p className="px-5 pt-5 pb-4">Please create schedule list before publishing the course.</p>
+          ) : (
+            <p className="px-5 pt-5 pb-4">
+              Unable to find any lessons for this course. Please add a lesson to publish this Course.
+            </p>
+          )}
+
+          <div className="d-flex justify-content-center">
+            <Modal.Footer>
+              <Button className="px-4 mb-4 Kharpi-save-btn" onClick={() => this.setState({ lessonShow: false })}>
+                OK
+              </Button>
+            </Modal.Footer>
+          </div>
+        </Modal>
       </ThemeProvider>
-    )
+    );
   }
 }

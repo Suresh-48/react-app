@@ -1,6 +1,7 @@
 import "./App.css";
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "react-bootstrap-timezone-picker/dist/react-bootstrap-timezone-picker.min.css";
 
 import { ToastContainer } from "react-toastify";
 
@@ -78,6 +79,17 @@ import StudentDetails from "./components/StudentDetails";
 // About Us
 import AboutUs from "./components/AboutUs";
 
+// Privacy Policy
+import PrivacyPolicy from "./components/PrivacyPolicy";
+
+//Terms of use
+
+import TermsOfUse from "./components/TermsOfUse";
+
+//Trainers
+
+import Trainers from "./components/Trainers";
+
 // Help
 import Help from "./components/Help";
 
@@ -101,9 +113,7 @@ import CreateCourseSchedule from "./components/CourseSchedule/CreateCourseSchedu
 // Edit Course Schedule
 import EditCourseSchedule from "./components/CourseSchedule/EditCourseSchedule";
 
-//Edit Admin Details
-import EditAdminDetails from "./components/EditAdminDetails";
-
+// Teacher Signup
 import TeacherSignup from "./components/TeacherSignup";
 
 // Course Menu
@@ -158,7 +168,7 @@ import TeacherHomeworkReview from "./components/TeacherHomeworkReview";
 //HomeWork Preview
 import HomeWorkPreview from "./components/HomeWorkPreview";
 
-// Home Work Answer
+// Student Can View Home Work Review Answer
 import HomeWorkAnswer from "./components/HomeWorkAnswer";
 
 //Teacher Course List
@@ -177,16 +187,13 @@ import QuizReview from "./components/QuizReview";
 import CalendarView from "./components/CalendarView";
 
 // Teacher Application
-import TeacherApplicationForm from "./components/TeacherApplicationForm";
+import TeacherApplication from "./components/TeacherApplication";
 
 // Teacher Available
 import TeacherAvailable from "./components/TeacherAvailable";
 
 // Student List For Each Class
 import EachClassStudentList from "./components/EachClassStudentList";
-
-//Completed Course List
-import CompletedCourseList from "./components/CompletedCourseList";
 
 // Corse History
 import CourseHistory from "./components/CourseHistory";
@@ -198,10 +205,64 @@ import StudentTranscript from "./components/StudentTranscript";
 import AdminStudentUpcomingScheduleList from "./components/AdminStudentUpcomingScheduleList";
 
 // Edit Quiz
-import EditQuiz from "./components/CreateQuiz/EditQuiz";
+import EditQuizIntegration from "./components/EditQuizIntegration";
 
 // Edit Home Work
-import EditHomeWork from "./components/CreateHomeWork/EditHomeWork";
+import EditHomeWorkIntegration from "./components/EditHomeWorkIntegration";
+
+// Student Public Profile
+import StudentPublicProfile from "./components/StudentPublicProfile";
+
+// Student Public Profile
+import ParentPublicProfile from "./components/ParentPublicProfile";
+
+//Edit Reviewed Quiz
+import EditReviewedQuiz from "./components/EditReviewedQuiz";
+
+//Edit Reviewed HomeWork
+import EditReviewedHomeWork from "./components/EditReviewedHomeWork";
+
+// Teacher Application for Admin
+import TeacherApplicationForAdmin from "./components/TeacherApplicationForAdmin";
+
+import ScheduleForCalendarFormat from "./components/ScheduleForCalendarFormat";
+
+// Favourite Course
+import FavouriteCourse from "./components/FavouriteCourse";
+
+// Active Enroll Course List for parent and student
+import ActiveEnrollCourseList from "./components/ActiveEnrollCourseList";
+
+// Complete course list for student
+import CompleteCourseList from "./components/CompleteCourseList";
+
+//Change Password
+import ChangePassword from "./components/ChangePassword";
+
+//Teacher Application Details for User
+import DisplayTeacherApplication from "./components/TeacherApplication/displayTeacherApplication";
+//Homw Work Integration
+import HomeWorkIntegration from "./components/HomeWorkIntegration";
+
+// Quiz Integration
+import QuizIntegration from "./components/QuizIntegration";
+
+// HomeWork Review
+import HomeWorkReview from "./components/HomeWorkReview";
+
+//Forum
+import Forum from "./components/Forum/ForumConversation";
+import ForumSelect from "./components/Forum/forum";
+import ForumComments from "./components/Forum/ForumComments";
+import AdminForum from "./components/Forum/AdminForum";
+import TeacherProfile from "./components/TeacherPublicProfile/TeacherProfile";
+
+// chat Bot Conversation
+import ChatBotConversation from "./components/ChatBotConversation/ChatBotConversation";
+
+//FAQ
+import FAQ from "./components/FAQ";
+import TeacherPayment from "./components/TeacherDetails/teacherPayment";
 
 function App() {
   return (
@@ -216,13 +277,15 @@ function App() {
       />
       <Router history={history}>
         <Switch>
-          <PublicLayout exact name="Login" path="/login" component={Login} />
+          <PublicLayout exact name="LandingPage" path="/kharpi" component={LandingPage} />
 
           <Route exact path="/" component={Home}>
-            <Redirect to="/login" />
+            <Redirect to="/kharpi" />
           </Route>
 
           <PublicLayout exact name="Dashboard" path="/dashboard" component={Dashboard} />
+
+          <PublicLayout exact name="Login" path="/login" component={Login} />
 
           {/* <Route exact path="/dashboard" component={Dashboard} /> */}
 
@@ -232,17 +295,13 @@ function App() {
 
           <PublicLayout exact name="AdminLogin" path="/admin-login" component={AdminLogin} />
 
-          <PublicLayout exact name="LandingPage" path="/landing-page" component={LandingPage} />
-
           <PublicLayout exact name="Course Creation" path="/course/add" component={CoursesCreation} />
 
-          <PublicLayout exact name="SetPassword" path="/set-password" component={SetPassword} />
+          <PublicLayout exact name="SetPassword" path="/set/password" component={SetPassword} />
 
-          <PublicLayout exact name="ResetPassword" path="/reset-password" component={ResetPassword} />
+          <PublicLayout exact name="ParentSignup" path="/parent/signup" component={ParentSignup} />
 
-          <Route path="/parent/signup" component={ParentSignup} />
-
-          <Route path="/student/signup" component={StudentSignup} />
+          <PublicLayout exact name="StudentSignup" path="/student/signup" component={StudentSignup} />
 
           <PublicLayout exact name="EditParentDetails" path="/edit-parent-details" component={EditParentDetails} />
 
@@ -254,8 +313,6 @@ function App() {
             path="/edit/student/details/:id"
             component={EditStudentDetails}
           />
-
-          <PublicLayout exact name="EditAdminDetails" path="/admin/details" component={EditAdminDetails} />
 
           <PublicLayout exact name="ParentsList" path="/parents/list" component={ParentsList} />
 
@@ -283,6 +340,12 @@ function App() {
 
           <PublicLayout exact name="About Us" path="/about-us" component={AboutUs} />
 
+          <PublicLayout exact name="Privacy Policy" path="/privacy-policy" component={PrivacyPolicy} />
+
+          <PublicLayout exact name="Termsofuse" path="/terms-of-use" component={TermsOfUse} />
+
+          <PublicLayout exact name="Trainers" path="/trainers" component={Trainers} />
+
           <PublicLayout exact name="Forgot Password" path="/forgot/password" component={ResetPassword} />
 
           <PublicLayout exact name="CourseLesson" path="/course/lesson" component={CourseLesson} />
@@ -291,13 +354,9 @@ function App() {
 
           <PublicLayout exact name="CourseSchedule" path="/course/schedule" component={CourseSchedule} />
 
-          <PublicLayout exact name="About Us" path="/about-us" component={AboutUs} />
-
           <PublicLayout exact name="CourseLesson" path="/course/lesson" component={CourseLesson} />
 
           <PublicLayout exact name="EditCourseLessons" path="/course/lesson/edit/:id" component={EditCourseLessons} />
-
-          <PublicLayout exact name="CourseSchedule" path="/course/schedule" component={CourseSchedule} />
 
           <PublicLayout
             exact
@@ -329,8 +388,15 @@ function App() {
           <PublicLayout
             exact
             name="Teacher Public Profile"
-            path="/teacher/profile/public"
+            path="/teacher/profile/view"
             component={TeacherPublicProfile}
+          />
+
+          <PublicLayout
+            exact
+            name="DisplayTeacherApplication"
+            path="/teacher/application/details"
+            component={DisplayTeacherApplication}
           />
 
           <PublicLayout
@@ -353,9 +419,16 @@ function App() {
 
           <PublicLayout
             exact
-            name="TeacherApplicationForm"
+            name="TeacherApplication"
             path="/teacher/application/form"
-            component={TeacherApplicationForm}
+            component={TeacherApplication}
+          />
+
+          <PublicLayout
+            exact
+            name="TeacherApplicationForAdmin"
+            path="/teacher/application"
+            component={TeacherApplicationForAdmin}
           />
 
           <PublicLayout
@@ -371,7 +444,7 @@ function App() {
 
           <PublicLayout exact name="HomeWorkPreview" path="/homework/preview" component={HomeWorkPreview} />
 
-          <PublicLayout exact name="HomeWorkAnswer" path="/homework/answers" component={HomeWorkAnswer} />
+          <PublicLayout exact name="HomeWorkAnswer" path="/homework/review/answers" component={HomeWorkAnswer} />
 
           <PublicLayout exact name="TeacherCourseList" path="/teacher/schedule/:id" component={TeacherCourseList} />
           <PublicLayout exact name="AdminQuiz" path="/admin/quiz" component={AdminQuiz} />
@@ -385,12 +458,6 @@ function App() {
             path="/class/student/list/:id"
             component={EachClassStudentList}
           />
-          <PublicLayout
-            exact
-            name="CompletedCourseList"
-            path="/completed/course/list"
-            component={CompletedCourseList}
-          />
           <PublicLayout exact name="CourseHistory" path="/course/history" component={CourseHistory} />
           <PublicLayout exact name="StudentTranscript" path="/student/transcript/:id" component={StudentTranscript} />
           <PublicLayout
@@ -399,8 +466,65 @@ function App() {
             path="/upcoming/schedule/list/:id"
             component={AdminStudentUpcomingScheduleList}
           />
-          <PublicLayout exact name="EditQuiz" path="/quiz/edit" component={EditQuiz} />
-          <PublicLayout exact name="EditHomeWork" path="/homework/edit" component={EditHomeWork} />
+          <PublicLayout exact name="EditQuizIntegration" path="/quiz/edit" component={EditQuizIntegration} />
+          <PublicLayout
+            exact
+            name="EditHomeWorkIntegration"
+            path="/homework/edit"
+            component={EditHomeWorkIntegration}
+          />
+          <PublicLayout
+            exact
+            name="StudentPublicProfile"
+            path="/student/public/profile"
+            component={StudentPublicProfile}
+          />
+          <PublicLayout
+            exact
+            name="ParentPublicProfile"
+            path="/Parent/public/profile"
+            component={ParentPublicProfile}
+          />
+          <PublicLayout exact name="EditReviewedQuiz" path="/quiz/reviewed/edit" component={EditReviewedQuiz} />
+          <PublicLayout
+            exact
+            name="EditReviewedHomeWork"
+            path="/homework/reviewed/edit"
+            component={EditReviewedHomeWork}
+          />
+          <PublicLayout exact name="FavouriteCourse" path="/favourite/course" component={FavouriteCourse} />
+          <PublicLayout
+            exact
+            name="ScheduleForCalendarFormat"
+            path="/calendar/view/upcoming/schedule"
+            component={ScheduleForCalendarFormat}
+          />
+          <PublicLayout
+            exact
+            name="ActiveEnrollCourseList"
+            path="/active/enroll/course/list"
+            component={ActiveEnrollCourseList}
+          />
+          <PublicLayout exact name="CompleteCourseList" path="/completed/course/list" component={CompleteCourseList} />
+          <PublicLayout exact name="ChangePassword" path="/password/change" component={ChangePassword} />
+          <PublicLayout exact name="HomeWorkIntegration" path="/homework/create" component={HomeWorkIntegration} />
+          <PublicLayout exact name="QuizIntegration" path="/quiz/create" component={QuizIntegration} />
+
+          <PublicLayout exact name="HomeWorkReview" path="/homework/review" component={HomeWorkReview} />
+          <PublicLayout exact name="Forum" path="/forum" component={Forum} />
+          <PublicLayout exact name="ForumSelect" path="/forum/details" component={ForumSelect} />
+          <PublicLayout exact name="ForumComments" path="/forum/conversation" component={ForumComments} />
+          <PublicLayout exact name="AdminForum" path="/Admin/Forum" component={AdminForum} />
+          <PublicLayout exact name="TeacherProfile" path="/teacher/profile/:id" component={TeacherProfile} />
+          <PublicLayout
+            exact
+            name="ChatBotConversation"
+            path="/chat/bot/conversation"
+            component={ChatBotConversation}
+          />
+          <PublicLayout exact name="FAQ" path="/faq" component={FAQ} />
+          <PublicLayout exact name="TeacherPayment" path="/teacher/payments" component={TeacherPayment} />
+
           {/* <Route path="/course/:id" component={Home} />
 
           <Route path="/course/add" component={Home} />

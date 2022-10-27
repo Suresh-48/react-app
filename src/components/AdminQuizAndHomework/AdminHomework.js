@@ -90,7 +90,7 @@ export default class AdminHomework extends Component {
 
     return (
       <div>
-        <div className="main">
+        <div >
           <Survey.Survey model={survey} onComplete={(data) => this.onCompleteComponent(data)} />
         </div>
       </div>

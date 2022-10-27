@@ -4,8 +4,8 @@ import { Spinner } from 'react-bootstrap'
 function Loader() {
   return (
     <div>
-      <div className="d-flex position-absolute top-50 start-50 translate-middle">
-        <Spinner animation="grow" variant="primary" />
+      <div style={{ minHeight: "calc(100vh - 200px)" }} className="d-flex justify-content-center align-items-center">
+        <Spinner animation="grow" className='loader-color'/>
         <span>
           <h4 style={{ paddingLeft: 20 }}>Loading...</h4>
         </span>
