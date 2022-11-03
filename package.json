@@ -70,7 +70,6 @@
     "rebuild": "^0.1.2",
     "socket.io-client": "^4.5.1",
     "styled-components": "^5.3.1",
-    "survey-creator": "^1.9.3",
     "survey-creator-react": "^1.9.3-beta.1",
     "survey-knockout": "^1.9.3",
     "survey-react": "^1.8.78",
